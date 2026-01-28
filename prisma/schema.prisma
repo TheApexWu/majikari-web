@@ -1,0 +1,211 @@
+// Majikari Database Schema
+// PostgreSQL via Prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTH (NextAuth.js compatible)
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  
+  // Auth
+  accounts      Account[]
+  sessions      Session[]
+  
+  // App data
+  savedItems    SavedItem[]
+  searches      SearchHistory[]
+  alerts        PriceAlert[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  
+  @@unique([identifier, token])
+}
+
+// ============================================================================
+// ITEMS (Scraped from Mercari, Yahoo Auctions, etc.)
+// ============================================================================
+
+model Item {
+  id              String   @id  // Mercari ID like "m10355778958"
+  source          String   // "mercari", "yahoo_auctions", "surugaya"
+  
+  // Product info
+  name            String
+  description     String?  @db.Text
+  price           Int      // In JPY
+  priceUsd        Float?   // Converted at scrape time
+  
+  // Condition
+  condition       String?  // "新品、未使用", etc.
+  conditionId     Int?     // 1-5 scale
+  
+  // Images
+  imageUrl        String?
+  imageUrls       String[] // Up to 5 images
+  
+  // Category
+  category        String   // Our category: "figures", "cards", etc.
+  keyword         String?  // Search term used to find it
+  sourceCategory  String?  // Platform's own category
+  
+  // Seller
+  sellerId        String?
+  sellerName      String?
+  sellerRating    Int?     // Good ratings count
+  sellerBadRating Int?     // Bad ratings count
+  sellerSales     Int?     // Total sales
+  
+  // Shipping
+  shippingPayer   String?  // "seller" or "buyer"
+  shippingFrom    String?  // Prefecture
+  shippingDaysMin Int?
+  shippingDaysMax Int?
+  
+  // Engagement
+  numLikes        Int      @default(0)
+  
+  // Embeddings (for recommendations)
+  clipEmbedding   Float[]  // Image embedding from Japanese CLIP
+  textEmbedding   Float[]  // Text embedding from e5
+  
+  // Metadata
+  url             String
+  scrapedAt       DateTime
+  sortMethod      String?  // "fresh" or "popular"
+  priceTier       String?  // "¥0-2000", etc.
+  
+  // Relations
+  savedBy         SavedItem[]
+  alerts          PriceAlert[]
+  priceHistory    PriceHistory[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([category])
+  @@index([price])
+  @@index([scrapedAt])
+}
+
+// ============================================================================
+// USER DATA
+// ============================================================================
+
+model SavedItem {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  notes     String?
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, itemId])
+}
+
+model SearchHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  query     String
+  filters   Json?    // Price range, category, etc.
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+}
+
+model PriceAlert {
+  id          String   @id @default(cuid())
+  userId      String
+  itemId      String?  // Specific item
+  query       String?  // Or search query
+  targetPrice Int      // Alert when price drops below this
+  isActive    Boolean  @default(true)
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item        Item?    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  triggeredAt DateTime?
+}
+
+// ============================================================================
+// ANALYTICS
+// ============================================================================
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  itemId    String
+  price     Int
+  
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  recordedAt DateTime @default(now())
+  
+  @@index([itemId, recordedAt])
+}
+
+model CalculatorUsage {
+  id            String   @id @default(cuid())
+  inputUrl      String
+  source        String   // "mercari", "yahoo", etc.
+  itemPrice     Int
+  totalCost     Int      // Our calculated total
+  buyeeCost     Int?     // Competitor comparison
+  zenmarketCost Int?
+  
+  userAgent     String?
+  ipCountry     String?
+  
+  createdAt     DateTime @default(now())
+}
