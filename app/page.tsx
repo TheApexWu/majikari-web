@@ -7,9 +7,26 @@
  * 3. Email capture
  */
 
+import Link from 'next/link'
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+      {/* Header */}
+      <header className="border-b border-gray-800">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <span className="text-xl font-bold">マジカリ</span>
+          <nav className="flex items-center gap-4">
+            <Link href="/" className="text-white font-medium">
+              Calculator
+            </Link>
+            <Link href="/discover" className="text-gray-400 hover:text-white transition">
+              Discover
+            </Link>
+          </nav>
+        </div>
+      </header>
+      
       {/* Hero */}
       <section className="max-w-4xl mx-auto px-4 py-20 text-center">
         <h1 className="text-5xl font-bold mb-6">
@@ -51,6 +68,16 @@ export default function Home() {
           <p className="text-xs text-gray-500 mt-4">
             We'll show you the total landed cost vs Buyee, ZenMarket, and others
           </p>
+          
+          <div className="mt-6 pt-6 border-t border-gray-700">
+            <p className="text-gray-400 text-sm mb-3">Or browse our collection</p>
+            <Link
+              href="/discover"
+              className="inline-block px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition"
+            >
+              Browse 1,500+ Items →
+            </Link>
+          </div>
         </div>
       </section>
       
