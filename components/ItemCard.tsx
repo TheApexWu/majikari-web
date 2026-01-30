@@ -1,18 +1,4 @@
-/**
- * ItemCard Component
- * 
- * CONCEPT: React Component Structure
- * ──────────────────────────────────
- * A component is a reusable piece of UI.
- * 
- * This component displays one item from our scraped data.
- * It receives the item data as "props" (properties passed from parent).
- * 
- * PATTERN: Props Interface
- * Define an interface for the props so TypeScript can check them.
- */
-
-'use client'  // This component uses onClick, so it must be a Client Component
+'use client'
 
 import { useState } from 'react'
 import { Item, formatPrice, formatPriceUSD } from '@/lib/items'
@@ -20,142 +6,184 @@ import { isInWishlist, toggleWishlist } from '@/lib/wishlist'
 
 interface ItemCardProps {
   item: Item
-  onWishlistChange?: () => void  // Callback when wishlist changes
+  onWishlistChange?: () => void
 }
 
 export default function ItemCard({ item, onWishlistChange }: ItemCardProps) {
-  // Local state for wishlist status
-  // We track this in state so the heart icon updates immediately
   const [wishlisted, setWishlisted] = useState(() => isInWishlist(item.id))
-  
-  /**
-   * CONCEPT: Event Handlers
-   * ───────────────────────
-   * Functions that run when user interacts (click, hover, etc.)
-   * Convention: name them handle[Event] (e.g., handleClick)
-   */
+  const [showCosts, setShowCosts] = useState(false)
+
   const handleWishlistClick = (e: React.MouseEvent) => {
-    // Prevent the click from bubbling up to the card link
     e.preventDefault()
     e.stopPropagation()
-    
     const newState = toggleWishlist(item.id)
     setWishlisted(newState)
-    
-    // Notify parent component if callback provided
     onWishlistChange?.()
   }
-  
+
   const handleBuyClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    // Open Mercari link in new tab
     window.open(item.url, '_blank')
   }
-  
-  /**
-   * CONCEPT: Conditional Rendering
-   * ──────────────────────────────
-   * Show different UI based on data.
-   * We use the ternary operator: condition ? ifTrue : ifFalse
-   */
-  const conditionBadge = item.condition_id ? {
-    1: { label: '新品', color: 'bg-green-500' },
-    2: { label: '未使用に近い', color: 'bg-green-400' },
-    3: { label: '目立った傷なし', color: 'bg-yellow-500' },
-    4: { label: 'やや傷あり', color: 'bg-orange-500' },
-    5: { label: '傷あり', color: 'bg-red-500' },
-  }[item.condition_id] : null
-  
-  /**
-   * CONCEPT: Seller Trust Score
-   * ───────────────────────────
-   * Calculate a simple trust percentage from ratings.
-   */
-  const sellerTrust = item.seller_rating_good && item.seller_rating_bad
-    ? Math.round((item.seller_rating_good / (item.seller_rating_good + item.seller_rating_bad)) * 100)
-    : null
-  
+
+  const cost = item.cost_estimates
+  const trust = item.trust
+
+  // Risk badge color
+  const riskColor = {
+    low: 'bg-emerald-500/20 text-emerald-400',
+    medium: 'bg-yellow-500/20 text-yellow-400',
+    high: 'bg-red-500/20 text-red-400',
+  }[trust?.risk ?? 'medium']
+
+  // Price tier badge
+  const tierBadge = {
+    budget: { label: 'Budget', color: 'text-emerald-400' },
+    mid: { label: 'Mid-range', color: 'text-blue-400' },
+    premium: { label: 'Premium', color: 'text-purple-400' },
+    grail: { label: 'Grail', color: 'text-amber-400' },
+  }[item.price_tier ?? 'mid']
+
   return (
-    <div className="bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition group">
-      {/* Image Container */}
-      <div className="relative aspect-square bg-gray-700">
+    <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-600 transition group">
+      {/* Image */}
+      <div className="relative aspect-square bg-zinc-800">
         {item.image_url ? (
           <img
             src={item.image_url}
             alt={item.name}
             className="w-full h-full object-cover"
-            loading="lazy"  // Browser lazy-loads images below the fold
+            loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-500">
+          <div className="w-full h-full flex items-center justify-center text-zinc-600">
             No Image
           </div>
         )}
-        
-        {/* Wishlist Heart Button */}
+
+        {/* Wishlist */}
         <button
           onClick={handleWishlistClick}
-          className={`absolute top-2 right-2 p-2 rounded-full transition ${
-            wishlisted 
-              ? 'bg-red-500 text-white' 
-              : 'bg-black/50 text-white hover:bg-black/70'
+          className={`absolute top-2 right-2 p-1.5 rounded-full transition ${
+            wishlisted
+              ? 'bg-red-500 text-white'
+              : 'bg-black/60 text-white hover:bg-black/80'
           }`}
-          aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
         >
           {wishlisted ? '❤️' : '🤍'}
         </button>
-        
-        {/* Condition Badge */}
-        {conditionBadge && (
-          <span className={`absolute bottom-2 left-2 px-2 py-1 rounded text-xs text-white ${conditionBadge.color}`}>
-            {conditionBadge.label}
+
+        {/* Franchise badge */}
+        {item.franchise && (
+          <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[10px] text-zinc-300 font-medium">
+            {item.franchise}
           </span>
         )}
-        
-        {/* Likes Badge */}
+
+        {/* Likes */}
         {item.num_likes > 0 && (
-          <span className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/50 text-xs text-white">
-            ❤️ {item.num_likes}
+          <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-[10px] text-white">
+            ♥ {item.num_likes}
+          </span>
+        )}
+
+        {/* Savings badge */}
+        {cost && cost.savings_jpy > 500 && (
+          <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-emerald-600/90 text-[10px] text-white font-medium">
+            Save {formatPrice(cost.savings_jpy)}
           </span>
         )}
       </div>
-      
-      {/* Info Section */}
+
+      {/* Info */}
       <div className="p-3">
-        {/* Title - truncated to 2 lines */}
-        <h3 className="text-sm font-medium text-white line-clamp-2 h-10">
+        <h3 className="text-sm font-medium text-white line-clamp-2 min-h-[2.5rem]">
           {item.name}
         </h3>
-        
-        {/* Price */}
-        <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-lg font-bold text-white">
-            {formatPrice(item.price)}
-          </span>
-          <span className="text-xs text-gray-400">
-            ({formatPriceUSD(item.price)})
-          </span>
+
+        {/* Price row */}
+        <div className="mt-2 flex items-baseline justify-between">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-lg font-bold text-white">
+              {formatPrice(item.price)}
+            </span>
+            <span className="text-xs text-zinc-500">
+              ${item.price_usd}
+            </span>
+          </div>
+          {tierBadge && (
+            <span className={`text-[10px] font-medium ${tierBadge.color}`}>
+              {tierBadge.label}
+            </span>
+          )}
         </div>
-        
-        {/* Seller Info */}
-        {sellerTrust !== null && (
-          <div className="mt-1 text-xs text-gray-400">
-            Seller: {sellerTrust}% positive
+
+        {/* True cost */}
+        {cost && (
+          <div className="mt-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-zinc-500">True landed cost</span>
+              <span className="text-white font-medium">
+                ${cost.cheapest_total_usd} via {cost.cheapest_proxy}
+              </span>
+            </div>
           </div>
         )}
-        
-        {/* Shipping Info */}
-        <div className="mt-1 text-xs text-gray-500">
-          {item.shipping_payer === 'seller' ? '送料込み (Free ship)' : '送料別 (Buyer pays)'}
+
+        {/* Trust + Category row */}
+        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+          {trust && (
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${riskColor}`}>
+              {trust.risk === 'low' ? '✓ Low risk' : trust.risk === 'medium' ? '~ Medium risk' : '⚠ High risk'}
+            </span>
+          )}
+          <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-400">
+            {item.category_source}
+          </span>
+          {item.condition && (
+            <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-400">
+              {item.condition}
+            </span>
+          )}
         </div>
-        
-        {/* Action Buttons */}
-        <div className="mt-3 flex gap-2">
+
+        {/* Cost breakdown toggle */}
+        {cost && (
+          <div className="mt-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowCosts(!showCosts) }}
+              className="text-[10px] text-zinc-500 hover:text-zinc-300 transition"
+            >
+              {showCosts ? '▾ Hide proxy costs' : '▸ Compare proxy costs'}
+            </button>
+
+            {showCosts && (
+              <div className="mt-1.5 space-y-1">
+                {Object.entries(cost.breakdown)
+                  .sort(([, a], [, b]) => a.total_jpy - b.total_jpy)
+                  .map(([key, proxy]) => (
+                    <div key={key} className="flex items-center justify-between text-[10px]">
+                      <span className={`${proxy.proxy === cost.cheapest_proxy ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                        {proxy.proxy}
+                        {proxy.proxy === cost.cheapest_proxy && ' ★'}
+                      </span>
+                      <span className={`font-mono ${proxy.proxy === cost.cheapest_proxy ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                        {formatPrice(proxy.total_jpy)} (${proxy.total_usd})
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Buy button */}
+        <div className="mt-3">
           <button
             onClick={handleBuyClick}
-            className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition"
+            className="w-full px-3 py-2 bg-white text-black text-sm font-semibold rounded-lg hover:bg-zinc-200 transition"
           >
-            View on Mercari
+            View on Mercari →
           </button>
         </div>
       </div>

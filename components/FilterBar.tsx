@@ -1,146 +1,110 @@
-/**
- * FilterBar Component
- * 
- * CONCEPT: Controlled vs Uncontrolled Components
- * ──────────────────────────────────────────────
- * "Controlled" means React controls the value via state.
- * "Uncontrolled" means the DOM controls the value (default HTML behavior).
- * 
- * We use controlled components here so:
- * 1. We can sync filters to URL params (future)
- * 2. Parent can set initial values
- * 3. Filter logic is predictable
- */
-
 'use client'
 
 import { SortOption } from '@/lib/items'
 
 interface FilterBarProps {
-  // Current filter values
   category: string
+  franchise: string
   minPrice: string
   maxPrice: string
   search: string
   sort: SortOption
-  
-  // Available options
+
   categories: string[]
-  
-  // Change handlers
+  franchises: string[]
+
   onCategoryChange: (category: string) => void
+  onFranchiseChange: (franchise: string) => void
   onMinPriceChange: (price: string) => void
   onMaxPriceChange: (price: string) => void
   onSearchChange: (search: string) => void
   onSortChange: (sort: SortOption) => void
   onReset: () => void
-  
-  // Stats
+
   totalItems: number
   filteredItems: number
 }
 
+const capitalize = (s: string) =>
+  s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+
 export default function FilterBar({
-  category,
-  minPrice,
-  maxPrice,
-  search,
-  sort,
-  categories,
-  onCategoryChange,
-  onMinPriceChange,
-  onMaxPriceChange,
-  onSearchChange,
-  onSortChange,
-  onReset,
-  totalItems,
-  filteredItems,
+  category, franchise, minPrice, maxPrice, search, sort,
+  categories, franchises,
+  onCategoryChange, onFranchiseChange, onMinPriceChange, onMaxPriceChange,
+  onSearchChange, onSortChange, onReset,
+  totalItems, filteredItems,
 }: FilterBarProps) {
-  /**
-   * CONCEPT: Capitalize Helper
-   * ──────────────────────────
-   * Display "figures" as "Figures" in the UI
-   */
-  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-  
+  const selectClass = "w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:border-zinc-500 focus:outline-none text-sm"
+  const inputClass = "w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:border-zinc-500 focus:outline-none text-sm"
+
   return (
-    <div className="bg-gray-800 rounded-lg p-4 space-y-4">
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-4">
       {/* Search */}
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Search</label>
         <input
           type="text"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search items..."
-          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+          placeholder="Search items, franchises..."
+          className={inputClass}
         />
       </div>
-      
-      {/* Category */}
+
+      {/* Franchise */}
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Category</label>
-        <select
-          value={category}
-          onChange={(e) => onCategoryChange(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-        >
-          <option value="">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>
-              {capitalize(cat)}
-            </option>
+        <label className="block text-xs text-zinc-500 mb-1 font-medium">Franchise</label>
+        <select value={franchise} onChange={(e) => onFranchiseChange(e.target.value)} className={selectClass}>
+          <option value="">All Franchises</option>
+          {franchises.map((f) => (
+            <option key={f} value={f}>{f}</option>
           ))}
         </select>
       </div>
-      
-      {/* Price Range */}
+
+      {/* Category */}
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Price (¥)</label>
-        <div className="flex gap-2">
-          <input
-            type="number"
-            value={minPrice}
-            onChange={(e) => onMinPriceChange(e.target.value)}
-            placeholder="Min"
-            className="w-1/2 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
-          />
-          <input
-            type="number"
-            value={maxPrice}
-            onChange={(e) => onMaxPriceChange(e.target.value)}
-            placeholder="Max"
-            className="w-1/2 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
-          />
-        </div>
-      </div>
-      
-      {/* Sort */}
-      <div>
-        <label className="block text-sm text-gray-400 mb-1">Sort By</label>
-        <select
-          value={sort}
-          onChange={(e) => onSortChange(e.target.value as SortOption)}
-          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:border-blue-500 focus:outline-none"
-        >
-          <option value="newest">Newest First</option>
-          <option value="price-asc">Price: Low to High</option>
-          <option value="price-desc">Price: High to Low</option>
-          <option value="likes">Most Popular</option>
+        <label className="block text-xs text-zinc-500 mb-1 font-medium">Category</label>
+        <select value={category} onChange={(e) => onCategoryChange(e.target.value)} className={selectClass}>
+          <option value="">All Categories</option>
+          {categories.map((cat) => (
+            <option key={cat} value={cat}>{capitalize(cat)}</option>
+          ))}
         </select>
       </div>
-      
-      {/* Reset Button */}
+
+      {/* Price Range */}
+      <div>
+        <label className="block text-xs text-zinc-500 mb-1 font-medium">Price (¥)</label>
+        <div className="flex gap-2">
+          <input type="number" value={minPrice} onChange={(e) => onMinPriceChange(e.target.value)} placeholder="Min" className={inputClass} />
+          <input type="number" value={maxPrice} onChange={(e) => onMaxPriceChange(e.target.value)} placeholder="Max" className={inputClass} />
+        </div>
+      </div>
+
+      {/* Sort */}
+      <div>
+        <label className="block text-xs text-zinc-500 mb-1 font-medium">Sort</label>
+        <select value={sort} onChange={(e) => onSortChange(e.target.value as SortOption)} className={selectClass}>
+          <option value="newest">Newest</option>
+          <option value="price-asc">Price: Low → High</option>
+          <option value="price-desc">Price: High → Low</option>
+          <option value="likes">Most Popular</option>
+          <option value="savings">Biggest Savings</option>
+        </select>
+      </div>
+
+      {/* Reset */}
       <button
         onClick={onReset}
-        className="w-full px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition"
+        className="w-full px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-sm rounded-lg transition"
       >
         Reset Filters
       </button>
-      
-      {/* Results Count */}
-      <div className="text-sm text-gray-400 text-center pt-2 border-t border-gray-700">
-        Showing {filteredItems.toLocaleString()} of {totalItems.toLocaleString()} items
+
+      {/* Count */}
+      <div className="text-xs text-zinc-500 text-center pt-2 border-t border-zinc-800">
+        {filteredItems.toLocaleString()} of {totalItems.toLocaleString()} items
       </div>
     </div>
   )

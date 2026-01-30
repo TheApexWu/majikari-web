@@ -195,6 +195,17 @@ model PriceHistory {
   @@index([itemId, recordedAt])
 }
 
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String?  // "landing", "calculator", "discover"
+  referrer  String?  // Where they came from
+  
+  createdAt DateTime @default(now())
+  
+  @@index([createdAt])
+}
+
 model CalculatorUsage {
   id            String   @id @default(cuid())
   inputUrl      String

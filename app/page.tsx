@@ -1,153 +1,169 @@
 /**
  * Majikari Landing Page
  * 
- * Simple MVP landing with:
- * 1. Hero + value prop
- * 2. Savings Calculator (the viral tool)
- * 3. Email capture
+ * Clean, intentional design. No gradient spam.
+ * Structure: Hero → Problem → Solution → Catalog Preview → Waitlist
  */
 
 import Link from 'next/link'
+import WaitlistForm from '@/components/WaitlistForm'
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+    <main className="min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="border-b border-gray-800">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <span className="text-xl font-bold">マジカリ</span>
-          <nav className="flex items-center gap-4">
-            <Link href="/" className="text-white font-medium">
-              Calculator
+      <header className="border-b border-zinc-800/50">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link href="/" className="text-lg font-bold tracking-tight">
+            マジカリ
+          </Link>
+          <nav className="flex items-center gap-6 text-sm">
+            <Link href="/discover" className="text-zinc-400 hover:text-white transition-colors">
+              Browse
             </Link>
-            <Link href="/discover" className="text-gray-400 hover:text-white transition">
-              Discover
+            <Link href="/products" className="text-zinc-400 hover:text-white transition-colors">
+              Products
             </Link>
           </nav>
         </div>
       </header>
-      
+
       {/* Hero */}
-      <section className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-5xl font-bold mb-6">
-          マジカリ
-          <span className="block text-2xl font-normal text-gray-400 mt-2">
-            Stop Overpaying for Japanese Goods
-          </span>
-        </h1>
-        
-        <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-          Proxy services hide their fees. We expose them.
-          <br />
-          See the <strong>real</strong> total cost before you buy.
-        </p>
-        
-        {/* Calculator CTA */}
-        <div className="bg-gray-800 rounded-xl p-8 max-w-xl mx-auto">
-          <h2 className="text-lg font-semibold mb-4">
-            🔍 Savings Calculator
-          </h2>
-          <p className="text-gray-400 mb-4 text-sm">
-            Paste any Mercari JP or Yahoo Auctions link
+      <section className="max-w-5xl mx-auto px-6 pt-24 pb-16">
+        <div className="max-w-2xl">
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
+            The real price of
+            <br />
+            Japanese collectibles.
+          </h1>
+          <p className="mt-6 text-lg text-zinc-400 leading-relaxed">
+            Proxy services bury their fees in fine print. We surface the true 
+            landed cost — so you know what you're actually paying before you buy.
           </p>
-          
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href="/discover"
+              className="px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-zinc-200 transition-colors"
+            >
+              Browse Catalog
+            </Link>
+            <a
+              href="#waitlist"
+              className="px-6 py-3 border border-zinc-700 text-white font-medium rounded-lg hover:border-zinc-500 transition-colors"
+            >
+              Join Waitlist
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Calculator */}
+      <section className="max-w-5xl mx-auto px-6 py-12">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-2xl">🔍</span>
+            <div>
+              <h2 className="text-lg font-semibold">Savings Calculator</h2>
+              <p className="text-sm text-zinc-500">
+                Paste a Mercari JP or Yahoo Auctions link
+              </p>
+            </div>
+          </div>
+
           <form className="flex gap-2">
             <input
               type="url"
               placeholder="https://jp.mercari.com/item/..."
-              className="flex-1 px-4 py-3 rounded-lg bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none"
+              className="flex-1 px-4 py-3 rounded-lg bg-black border border-zinc-700 text-white placeholder:text-zinc-600 focus:border-zinc-500 focus:outline-none transition-colors"
             />
             <button
               type="submit"
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
+              className="px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-zinc-200 transition-colors"
             >
               Calculate
             </button>
           </form>
-          
-          <p className="text-xs text-gray-500 mt-4">
-            We'll show you the total landed cost vs Buyee, ZenMarket, and others
+
+          <p className="mt-4 text-xs text-zinc-600">
+            Compares total cost across Buyee, ZenMarket, FromJapan, and direct purchase
           </p>
-          
-          <div className="mt-6 pt-6 border-t border-gray-700">
-            <p className="text-gray-400 text-sm mb-3">Or browse our collection</p>
-            <Link
-              href="/discover"
-              className="inline-block px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition"
-            >
-              Browse 1,500+ Items →
-            </Link>
+        </div>
+      </section>
+
+      {/* Problem */}
+      <section className="max-w-5xl mx-auto px-6 py-16">
+        <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-8">
+          Why collectors overpay
+        </h2>
+
+        <div className="grid sm:grid-cols-3 gap-6">
+          {[
+            {
+              icon: '💱',
+              title: 'Hidden FX Markup',
+              desc: 'Buyee charges 3-8.5% on currency conversion. They don\'t tell you upfront.',
+            },
+            {
+              icon: '📦',
+              title: 'Inflated Shipping',
+              desc: 'Oversized boxes, premium courier "upgrades," surprise fees at checkout.',
+            },
+            {
+              icon: '🧾',
+              title: 'Service Fee Stack',
+              desc: 'Inspection, repackaging, storage — death by a thousand cuts.',
+            },
+          ].map((item) => (
+            <div key={item.title} className="p-6 border border-zinc-800 rounded-lg">
+              <span className="text-2xl">{item.icon}</span>
+              <h3 className="mt-3 font-semibold">{item.title}</h3>
+              <p className="mt-2 text-sm text-zinc-400 leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* What we cover */}
+      <section className="max-w-5xl mx-auto px-6 py-16 border-t border-zinc-800/50">
+        <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-8">
+          Catalog Coverage
+        </h2>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { count: '3,500+', label: 'Good Smile products', sub: 'Nendoroid, figma, scales' },
+            { count: 'Soon', label: 'Kotobukiya', sub: 'ARTFX, Bishoujo, Frame Arms' },
+            { count: 'Soon', label: 'Bandai Spirits', sub: 'S.H.Figuarts, Robot Spirits' },
+            { count: 'Soon', label: 'MegaHouse', sub: 'G.E.M., Variable Action, Lookup' },
+          ].map((mfr) => (
+            <div key={mfr.label} className="p-5 bg-zinc-900 border border-zinc-800 rounded-lg">
+              <div className="text-2xl font-bold">{mfr.count}</div>
+              <div className="mt-1 font-medium text-sm">{mfr.label}</div>
+              <div className="mt-1 text-xs text-zinc-500">{mfr.sub}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Waitlist */}
+      <section id="waitlist" className="max-w-5xl mx-auto px-6 py-20 border-t border-zinc-800/50">
+        <div className="max-w-lg mx-auto text-center">
+          <h2 className="text-2xl font-bold">Get early access</h2>
+          <p className="mt-3 text-zinc-400">
+            Visual search, price alerts, and multi-marketplace comparison — launching soon.
+          </p>
+          <div className="mt-6">
+            <WaitlistForm source="landing-bottom" />
           </div>
         </div>
       </section>
-      
-      {/* Social Proof */}
-      <section className="max-w-4xl mx-auto px-4 py-12 text-center">
-        <p className="text-gray-500 text-sm">
-          Built by a collector who spent his first paycheck on a Touhou figure
-        </p>
-      </section>
-      
-      {/* How It Works */}
-      <section className="max-w-4xl mx-auto px-4 py-12">
-        <h2 className="text-2xl font-bold text-center mb-8">
-          Why Collectors Overpay
-        </h2>
-        
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="bg-gray-800 rounded-lg p-6">
-            <div className="text-3xl mb-3">💱</div>
-            <h3 className="font-semibold mb-2">Hidden FX Markup</h3>
-            <p className="text-gray-400 text-sm">
-              Buyee charges 3-8.5% on currency conversion. They don't tell you upfront.
-            </p>
-          </div>
-          
-          <div className="bg-gray-800 rounded-lg p-6">
-            <div className="text-3xl mb-3">📦</div>
-            <h3 className="font-semibold mb-2">Shipping Markup</h3>
-            <p className="text-gray-400 text-sm">
-              Oversized boxes, premium courier "upgrades," surprise fees at checkout.
-            </p>
-          </div>
-          
-          <div className="bg-gray-800 rounded-lg p-6">
-            <div className="text-3xl mb-3">🎭</div>
-            <h3 className="font-semibold mb-2">"Service" Fees</h3>
-            <p className="text-gray-400 text-sm">
-              Inspection fees, repackaging fees, storage fees — death by a thousand cuts.
-            </p>
-          </div>
-        </div>
-      </section>
-      
-      {/* Email Capture */}
-      <section className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <h2 className="text-2xl font-bold mb-4">
-          Get Early Access
-        </h2>
-        <p className="text-gray-400 mb-6">
-          Visual search + price alerts coming soon
-        </p>
-        
-        <form className="flex gap-2 max-w-md mx-auto">
-          <input
-            type="email"
-            placeholder="your@email.com"
-            className="flex-1 px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 focus:border-blue-500 focus:outline-none"
-          />
-          <button
-            type="submit"
-            className="px-6 py-3 bg-white text-black hover:bg-gray-200 rounded-lg font-semibold transition"
-          >
-            Join Waitlist
-          </button>
-        </form>
-      </section>
-      
+
       {/* Footer */}
-      <footer className="border-t border-gray-800 py-8 text-center text-gray-500 text-sm">
-        <p>Majikari (マジカリ) — The Real Deal on Japanese Goods</p>
+      <footer className="border-t border-zinc-800/50 py-8">
+        <div className="max-w-5xl mx-auto px-6 flex items-center justify-between text-sm text-zinc-600">
+          <span>Majikari (マジカリ)</span>
+          <span>Built by a collector, for collectors</span>
+        </div>
       </footer>
     </main>
   )
