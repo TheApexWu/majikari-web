@@ -14,6 +14,7 @@ out
 # misc
 .DS_Store
 *.pem
+tsconfig.tsbuildinfo
 
 # debug
 npm-debug.log*
@@ -23,3 +24,7 @@ prisma/migrations
 
 # vercel
 .vercel
+
+# large data files — NOT in git, deployed via `vercel deploy --prebuilt`
+# items.json is 80MB+, too big for git. Deploy from local build.
+public/data/items.json
