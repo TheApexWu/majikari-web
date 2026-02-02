@@ -1,170 +1,209 @@
-/**
- * Majikari Landing Page
- * 
- * Clean, intentional design. No gradient spam.
- * Structure: Hero → Problem → Solution → Catalog Preview → Waitlist
- */
+'use client'
 
-import Link from 'next/link'
-import WaitlistForm from '@/components/WaitlistForm'
+import { useState, FormEvent } from 'react'
 
 export default function Home() {
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [message, setMessage] = useState('')
+
+  async function handleWaitlist(e: FormEvent) {
+    e.preventDefault()
+    if (!email) return
+
+    setStatus('loading')
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (res.ok) {
+        setStatus('success')
+        setMessage("You're on the list. We'll be in touch.")
+        setEmail('')
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setStatus('error')
+        setMessage(data.error || 'Something went wrong. Try again.')
+      }
+    } catch {
+      setStatus('error')
+      setMessage('Something went wrong. Try again.')
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <header className="border-b border-zinc-800/50">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold tracking-tight">
-            マジカリ
-          </Link>
-          <nav className="flex items-center gap-6 text-sm">
-            <Link href="/discover" className="text-zinc-400 hover:text-white transition-colors">
-              Browse
-            </Link>
-            <Link href="/products" className="text-zinc-400 hover:text-white transition-colors">
-              Products
-            </Link>
-          </nav>
+    <>
+      <nav>
+        <div className="nav-logo">majikari<span className="jp">マジカリ</span></div>
+        <div className="nav-links">
+          <a href="#">Search</a>
+          <a href="#">Compare</a>
+          <a href="#">Alerts</a>
         </div>
-      </header>
+        <a className="nav-cta" href="#waitlist">Get Alerts</a>
+      </nav>
 
-      {/* Hero */}
-      <section className="max-w-5xl mx-auto px-6 pt-24 pb-16">
-        <div className="max-w-2xl">
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
-            The real price of
-            <br />
-            Japanese collectibles.
-          </h1>
-          <p className="mt-6 text-lg text-zinc-400 leading-relaxed">
-            Proxy services bury their fees in fine print. We surface the true 
-            landed cost — so you know what you're actually paying before you buy.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/discover"
-              className="px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-zinc-200 transition-colors"
-            >
-              Browse Catalog
-            </Link>
-            <a
-              href="#waitlist"
-              className="px-6 py-3 border border-zinc-700 text-white font-medium rounded-lg hover:border-zinc-500 transition-colors"
-            >
-              Join Waitlist
-            </a>
+      <div className="hero">
+        <div className="name-box">
+          <div className="name-word">
+            <span className="name-jp maji">マジ</span>
+            <span className="name-en">maji — &quot;for real&quot;</span>
+          </div>
+          <span className="name-plus">+</span>
+          <div className="name-word">
+            <span className="name-jp kari">狩り</span>
+            <span className="name-en">kari — &quot;hunting&quot;</span>
           </div>
         </div>
-      </section>
 
-      {/* Calculator */}
-      <section className="max-w-5xl mx-auto px-6 py-12">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
-          <div className="flex items-center gap-3 mb-6">
-            <span className="text-2xl">🔍</span>
-            <div>
-              <h2 className="text-lg font-semibold">Savings Calculator</h2>
-              <p className="text-sm text-zinc-500">
-                Paste a Mercari JP or Yahoo Auctions link
-              </p>
+        <h1>Know what it <em>actually</em> costs<br />to buy from Japan.</h1>
+        <p className="hero-sub">
+          Price intelligence for Japanese collectibles. Track Mercari JP listings,
+          compare proxy fees, see the real landed cost.
+        </p>
+
+        <div className="search-wrap">
+          <span className="search-icon">⌕</span>
+          <input
+            type="text"
+            placeholder="Search any figure, nendoroid, scale... (JP or EN)"
+            readOnly
+          />
+        </div>
+
+        <div className="stats-bar">
+          <span className="stat-chip"><strong>16,302</strong> listings tracked</span>
+          <span className="stat-chip"><strong>7,374</strong> products indexed</span>
+          <span className="stat-chip">Updated <strong>2h ago</strong></span>
+        </div>
+      </div>
+
+      <hr className="divider" />
+
+      {/* Cost Comparison Demo */}
+      <div className="compare-section">
+        <div className="compare-header">
+          <h2>See the real cost breakdown</h2>
+          <p>Same figure, different proxies. Prices vary more than you&apos;d expect.</p>
+        </div>
+
+        <div className="compare-item">
+          <div className="compare-item-name">Nendoroid Mami Tomoe — Walpurgisnacht Ver.</div>
+          <div className="compare-item-jp">ねんどろいど 巴マミ ワルプルギスの廻天 Ver.</div>
+          <div className="compare-item-price">Mercari JP listing: <strong>¥3,900</strong> (~$26)</div>
+        </div>
+
+        <table className="compare-table">
+          <thead>
+            <tr>
+              <th>Proxy Service</th>
+              <th>Service Fee</th>
+              <th>Shipping (est.)</th>
+              <th>Total Landed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="best-row">
+              <td className="proxy-name">Buyee<span className="tag-best">Best</span></td>
+              <td className="fee">$3.90</td>
+              <td className="fee">$14.00</td>
+              <td className="total-cell">$43.90</td>
+            </tr>
+            <tr>
+              <td className="proxy-name">ZenMarket</td>
+              <td className="fee">$3.50</td>
+              <td className="fee">$18.00</td>
+              <td className="total-cell">$47.50</td>
+            </tr>
+            <tr>
+              <td className="proxy-name">FromJapan</td>
+              <td className="fee">$5.20</td>
+              <td className="fee">$16.00</td>
+              <td className="total-cell">$47.20</td>
+            </tr>
+            <tr>
+              <td className="proxy-name">Neokyo</td>
+              <td className="fee">$5.50</td>
+              <td className="fee">$19.00</td>
+              <td className="total-cell">$50.50</td>
+            </tr>
+            <tr>
+              <td className="proxy-name">Dejapan</td>
+              <td className="fee">$2.60</td>
+              <td className="fee">$22.00</td>
+              <td className="total-cell">$50.60</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <hr className="divider" />
+
+      {/* How It Works */}
+      <div className="how-section">
+        <div className="how-header">
+          <h2>How it works</h2>
+        </div>
+        <div className="how-steps">
+          <div className="how-step">
+            <div className="step-num s1">01</div>
+            <div className="step-title">Scrape Japan</div>
+            <div className="step-desc">
+              16K+ listings pulled from Mercari JP every 6 hours. Prices, conditions, photos. Raw data.
             </div>
           </div>
-
-          <form className="flex gap-2">
-            <input
-              type="url"
-              placeholder="https://jp.mercari.com/item/..."
-              className="flex-1 px-4 py-3 rounded-lg bg-black border border-zinc-700 text-white placeholder:text-zinc-600 focus:border-zinc-500 focus:outline-none transition-colors"
-            />
-            <button
-              type="submit"
-              className="px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-zinc-200 transition-colors"
-            >
-              Calculate
-            </button>
-          </form>
-
-          <p className="mt-4 text-xs text-zinc-600">
-            Compares total cost across Buyee, ZenMarket, FromJapan, and direct purchase
-          </p>
-        </div>
-      </section>
-
-      {/* Problem */}
-      <section className="max-w-5xl mx-auto px-6 py-16">
-        <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-8">
-          Why collectors overpay
-        </h2>
-
-        <div className="grid sm:grid-cols-3 gap-6">
-          {[
-            {
-              icon: '💱',
-              title: 'Hidden FX Markup',
-              desc: 'Buyee charges 3-8.5% on currency conversion. They don\'t tell you upfront.',
-            },
-            {
-              icon: '📦',
-              title: 'Inflated Shipping',
-              desc: 'Oversized boxes, premium courier "upgrades," surprise fees at checkout.',
-            },
-            {
-              icon: '🧾',
-              title: 'Service Fee Stack',
-              desc: 'Inspection, repackaging, storage — death by a thousand cuts.',
-            },
-          ].map((item) => (
-            <div key={item.title} className="p-6 border border-zinc-800 rounded-lg">
-              <span className="text-2xl">{item.icon}</span>
-              <h3 className="mt-3 font-semibold">{item.title}</h3>
-              <p className="mt-2 text-sm text-zinc-400 leading-relaxed">{item.desc}</p>
+          <div className="how-step">
+            <div className="step-num s2">02</div>
+            <div className="step-title">Match products</div>
+            <div className="step-desc">
+              Listings get matched to a catalog of 7,374 known items. Every listing for the same figure, in one place.
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* What we cover */}
-      <section className="max-w-5xl mx-auto px-6 py-16 border-t border-zinc-800/50">
-        <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-8">
-          Catalog Coverage
-        </h2>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { count: '3,500+', label: 'Good Smile products', sub: 'Nendoroid, figma, scales' },
-            { count: 'Soon', label: 'Kotobukiya', sub: 'ARTFX, Bishoujo, Frame Arms' },
-            { count: 'Soon', label: 'Bandai Spirits', sub: 'S.H.Figuarts, Robot Spirits' },
-            { count: 'Soon', label: 'MegaHouse', sub: 'G.E.M., Variable Action, Lookup' },
-          ].map((mfr) => (
-            <div key={mfr.label} className="p-5 bg-zinc-900 border border-zinc-800 rounded-lg">
-              <div className="text-2xl font-bold">{mfr.count}</div>
-              <div className="mt-1 font-medium text-sm">{mfr.label}</div>
-              <div className="mt-1 text-xs text-zinc-500">{mfr.sub}</div>
+          </div>
+          <div className="how-step">
+            <div className="step-num s3">03</div>
+            <div className="step-title">You see the real cost</div>
+            <div className="step-desc">
+              Proxy fees, international shipping, customs. All estimated upfront. The landed price, not the listing price.
             </div>
-          ))}
+          </div>
         </div>
-      </section>
+      </div>
+
+      <hr className="divider" />
 
       {/* Waitlist */}
-      <section id="waitlist" className="max-w-5xl mx-auto px-6 py-20 border-t border-zinc-800/50">
-        <div className="max-w-lg mx-auto text-center">
-          <h2 className="text-2xl font-bold">Get early access</h2>
-          <p className="mt-3 text-zinc-400">
-            Visual search, price alerts, and multi-marketplace comparison — launching soon.
-          </p>
-          <div className="mt-6">
-            <WaitlistForm source="landing-bottom" />
-          </div>
-        </div>
-      </section>
+      <div className="waitlist" id="waitlist">
+        <h2>Launching soon</h2>
+        <p>Get notified when Majikari goes live. No spam.</p>
+        <form className="waitlist-form" onSubmit={handleWaitlist}>
+          <input
+            type="email"
+            placeholder="you@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <button type="submit" disabled={status === 'loading'}>
+            {status === 'loading' ? 'Joining...' : 'Notify Me'}
+          </button>
+        </form>
+        {status === 'success' && <div className="waitlist-status success">{message}</div>}
+        {status === 'error' && <div className="waitlist-status error">{message}</div>}
+      </div>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-800/50 py-8">
-        <div className="max-w-5xl mx-auto px-6 flex items-center justify-between text-sm text-zinc-600">
-          <span>Majikari (マジカリ)</span>
-          <span>Built by a collector, for collectors</span>
+      <hr className="divider" />
+
+      <footer>
+        <div>
+          <span className="footer-brand">majikari マジカリ</span> · real prices from Japan
+        </div>
+        <div className="footer-links">
+          <a href="#">GitHub</a>
+          <a href="#">Twitter</a>
         </div>
       </footer>
-    </main>
+    </>
   )
 }
