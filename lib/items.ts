@@ -43,10 +43,10 @@ export interface Item {
   image_url: string | null
   image_urls: string[]
 
-  category_source: string
-  keyword: string
-  franchise: string
-  franchise_jp: string
+  category_source: string | null
+  keyword: string | null
+  franchise: string | null
+  franchise_jp: string | null
   mercari_category: string | null
 
   seller_id: string | null
@@ -87,12 +87,12 @@ export async function loadItems(): Promise<Item[]> {
 }
 
 export function getCategories(items: Item[]): string[] {
-  const categories = new Set(items.map(item => item.category_source))
+  const categories = new Set(items.map(item => item.category_source).filter((c): c is string => c != null && c !== ''))
   return Array.from(categories).sort()
 }
 
 export function getFranchises(items: Item[]): string[] {
-  const franchises = new Set(items.map(item => item.franchise).filter(Boolean))
+  const franchises = new Set(items.map(item => item.franchise).filter((f): f is string => f != null && f !== ''))
   return Array.from(franchises).sort()
 }
 
@@ -117,8 +117,8 @@ export function filterItems(
   }
 ): Item[] {
   return items.filter(item => {
-    if (filters.category && item.category_source !== filters.category) return false
-    if (filters.franchise && item.franchise !== filters.franchise) return false
+    if (filters.category && (item.category_source || '') !== filters.category) return false
+    if (filters.franchise && (item.franchise || '') !== filters.franchise) return false
     if (filters.minPrice !== undefined && item.price < filters.minPrice) return false
     if (filters.maxPrice !== undefined && item.price > filters.maxPrice) return false
     if (filters.condition !== undefined && item.condition_id !== filters.condition) return false

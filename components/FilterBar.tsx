@@ -25,8 +25,8 @@ interface FilterBarProps {
   filteredItems: number
 }
 
-const capitalize = (s: string) =>
-  s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+const capitalize = (s: string | null | undefined) =>
+  (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
 export default function FilterBar({
   category, franchise, minPrice, maxPrice, search, sort,

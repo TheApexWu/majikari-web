@@ -137,9 +137,11 @@ export default function ItemCard({ item, onWishlistChange }: ItemCardProps) {
               {trust.risk === 'low' ? '✓ Low risk' : trust.risk === 'medium' ? '~ Medium risk' : '⚠ High risk'}
             </span>
           )}
-          <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-400">
-            {item.category_source}
-          </span>
+          {item.category_source && (
+            <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-400">
+              {item.category_source}
+            </span>
+          )}
           {item.condition && (
             <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-400">
               {item.condition}
