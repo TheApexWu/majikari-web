@@ -1,48 +1,30 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [message, setMessage] = useState('')
+  const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState('')
 
-  async function handleWaitlist(e: FormEvent) {
+  function handleSearch(e: FormEvent) {
     e.preventDefault()
-    if (!email) return
-
-    setStatus('loading')
-    try {
-      const res = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      if (res.ok) {
-        setStatus('success')
-        setMessage("You're on the list. We'll be in touch.")
-        setEmail('')
-      } else {
-        const data = await res.json().catch(() => ({}))
-        setStatus('error')
-        setMessage(data.error || 'Something went wrong. Try again.')
-      }
-    } catch {
-      setStatus('error')
-      setMessage('Something went wrong. Try again.')
-    }
+    if (!searchQuery.trim()) return
+    router.push(`/products?q=${encodeURIComponent(searchQuery.trim())}`)
   }
 
   return (
     <>
       <nav>
-        <div className="nav-logo">majikari<span className="jp">マジカリ</span></div>
-        <div className="nav-links">
-          <a href="#">Search</a>
-          <a href="#">Compare</a>
-          <a href="#">Alerts</a>
+        <div className="nav-logo">
+          <a href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+            majikari<span className="jp">マジカリ</span>
+          </a>
         </div>
-        <a className="nav-cta" href="#waitlist">Get Alerts</a>
+        <div className="nav-links">
+          <a href="/products">Products</a>
+          <a href="/discover">Listings</a>
+        </div>
       </nav>
 
       <div className="hero">
@@ -60,23 +42,34 @@ export default function Home() {
 
         <h1>Know what it <em>actually</em> costs<br />to buy from Japan.</h1>
         <p className="hero-sub">
-          Price intelligence for Japanese collectibles. Track Mercari JP listings,
-          compare proxy fees, see the real landed cost.
+          Search 7,300+ figures by name (EN or JP). Find listings on Mercari JP.
+          Compare proxy fees. See the real landed cost.
         </p>
 
-        <div className="search-wrap">
+        <form onSubmit={handleSearch} className="search-wrap">
           <span className="search-icon">⌕</span>
           <input
             type="text"
-            placeholder="Search any figure, nendoroid, scale... (JP or EN)"
-            readOnly
+            placeholder="Try: Blue Archive, ねんどろいど, chainsaw man, marisa fumo..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-        </div>
+        </form>
 
         <div className="stats-bar">
           <span className="stat-chip"><strong>5,033</strong> listings tracked</span>
           <span className="stat-chip"><strong>7,374</strong> products indexed</span>
           <span className="stat-chip"><strong>6,453</strong> JP names mapped</span>
+        </div>
+
+        {/* Quick search pills */}
+        <div className="stats-bar" style={{ marginTop: '0.5rem' }}>
+          <a href="/products?q=Blue+Archive" className="stat-chip" style={{ textDecoration: 'none', cursor: 'pointer' }}>Blue Archive</a>
+          <a href="/products?q=Miku" className="stat-chip" style={{ textDecoration: 'none', cursor: 'pointer' }}>Miku</a>
+          <a href="/products?q=chainsaw+man" className="stat-chip" style={{ textDecoration: 'none', cursor: 'pointer' }}>Chainsaw Man</a>
+          <a href="/products?q=Fate" className="stat-chip" style={{ textDecoration: 'none', cursor: 'pointer' }}>Fate</a>
+          <a href="/products?q=ねんどろいど" className="stat-chip" style={{ textDecoration: 'none', cursor: 'pointer' }}>ねんどろいど</a>
+          <a href="/products?q=touhou" className="stat-chip" style={{ textDecoration: 'none', cursor: 'pointer' }}>Touhou</a>
         </div>
       </div>
 
@@ -129,12 +122,6 @@ export default function Home() {
               <td className="fee">$19.00</td>
               <td className="total-cell">$50.50</td>
             </tr>
-            <tr>
-              <td className="proxy-name">Dejapan</td>
-              <td className="fee">$2.60</td>
-              <td className="fee">$22.00</td>
-              <td className="total-cell">$50.60</td>
-            </tr>
           </tbody>
         </table>
       </div>
@@ -149,21 +136,21 @@ export default function Home() {
         <div className="how-steps">
           <div className="how-step">
             <div className="step-num s1">01</div>
-            <div className="step-title">Scrape Japan</div>
+            <div className="step-title">Search in any language</div>
             <div className="step-desc">
-              16K+ listings pulled from Mercari JP every 6 hours. Prices, conditions, photos. Raw data.
+              Type in English or Japanese. &quot;chainsaw man&quot; and &quot;チェンソーマン&quot; both find the same figures. 7,374 products mapped across languages.
             </div>
           </div>
           <div className="how-step">
             <div className="step-num s2">02</div>
-            <div className="step-title">Match products</div>
+            <div className="step-title">Find real listings</div>
             <div className="step-desc">
-              Listings get matched to a catalog of 7,374 known items. Every listing for the same figure, in one place.
+              Each product links to actual Mercari JP listings. See prices, conditions, photos. Real inventory, not estimates.
             </div>
           </div>
           <div className="how-step">
             <div className="step-num s3">03</div>
-            <div className="step-title">You see the real cost</div>
+            <div className="step-title">Compare the true cost</div>
             <div className="step-desc">
               Proxy fees, international shipping, customs. All estimated upfront. The landed price, not the listing price.
             </div>
@@ -173,24 +160,12 @@ export default function Home() {
 
       <hr className="divider" />
 
-      {/* Waitlist */}
-      <div className="waitlist" id="waitlist">
-        <h2>Launching soon</h2>
-        <p>Get notified when Majikari goes live. No spam.</p>
-        <form className="waitlist-form" onSubmit={handleWaitlist}>
-          <input
-            type="email"
-            placeholder="you@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <button type="submit" disabled={status === 'loading'}>
-            {status === 'loading' ? 'Joining...' : 'Notify Me'}
-          </button>
-        </form>
-        {status === 'success' && <div className="waitlist-status success">{message}</div>}
-        {status === 'error' && <div className="waitlist-status error">{message}</div>}
+      {/* URL Lookup Feature */}
+      <div className="how-section">
+        <div className="how-header">
+          <h2>Paste a Mercari URL, get the real price</h2>
+          <p>Found something on Mercari JP? Paste the link and see what it&apos;ll actually cost you through every proxy service.</p>
+        </div>
       </div>
 
       <hr className="divider" />
@@ -200,8 +175,8 @@ export default function Home() {
           <span className="footer-brand">majikari マジカリ</span> · real prices from Japan
         </div>
         <div className="footer-links">
-          <a href="#">GitHub</a>
-          <a href="#">Twitter</a>
+          <a href="/products">Products</a>
+          <a href="/discover">Listings</a>
         </div>
       </footer>
     </>

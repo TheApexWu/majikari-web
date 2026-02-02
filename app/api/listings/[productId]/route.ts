@@ -25,7 +25,7 @@ interface Listing {
   thumbnails?: string[]
 }
 
-const productList = products as Product[]
+const productList = products as unknown as Product[]
 const listings = (listingsData as any).items as Listing[]
 
 function normalize(text: string): string {
