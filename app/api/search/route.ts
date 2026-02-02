@@ -25,8 +25,8 @@ interface Product {
   sculptor?: string
 }
 
-// Type assertion for imported JSON
-const productList = products as Product[]
+// Type assertion for imported JSON (fields may vary across exports)
+const productList = products as unknown as Product[]
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
