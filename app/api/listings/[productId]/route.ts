@@ -179,8 +179,9 @@ function matchListings(product: Product) {
     .replace(/\s*[\-—:：].*(Ver|バージョン|限定|完全版).*$/i, '')
     .trim()
 
-  // Select candidate listings based on product category
-  const candidates = FIGURE_CATEGORIES.has(category) ? figureListings : allListings
+  // Use all listings as candidates — type detection gates handle filtering
+  // (category_hint is sparse, most listings have no hint)
+  const candidates = allListings
 
   const results: any[] = []
 
@@ -250,6 +251,17 @@ function matchListings(product: Product) {
       reasons.push('Series-JP')
     }
 
+    // STRICT GATE: If product has a specific subtype (nendoroid, figma, POP UP PARADE, scale)
+    // but the listing is generic "figure" or "unknown" with no subtype keyword,
+    // require a much higher score — prevents "デンジ フィギュア" matching Nendoroid Denji
+    const specificSubtypes = new Set(['nendoroid', 'figma', 'pop up parade', 'pop_up_parade', '1/7th scale', '1/8th scale', '1/4th scale', '1/6th scale'])
+    const productIsSpecific = specificSubtypes.has(category)
+    const listingIsGeneric = listingType === 'figure' || listingType === 'unknown'
+    if (productIsSpecific && listingIsGeneric) {
+      // Only allow if score is very high (full JP name + series match)
+      if (score < 0.8) continue
+    }
+
     if (score < 0.3) continue
 
     const { risk, flags } = assessRisk(listing)
@@ -282,6 +294,7 @@ export async function GET(
   }
 
   const listings = matchListings(product)
+  const gscId = product.id.replace('GSC-', '')
   return NextResponse.json({
     productId: params.productId,
     productName: product.name,
@@ -289,13 +302,13 @@ export async function GET(
     category: product.category,
     count: listings.length,
     listings: listings.map(l => ({ ...l, source: 'mercari', source_name: 'Mercari JP' })),
-    // When no listings found, provide GSC link as fallback
-    ...(listings.length === 0 ? {
-      fallback: {
-        type: 'goodsmile',
-        url: `https://www.goodsmile.info/en/product/${product.id.replace('GSC-', '')}`,
-        message: 'No marketplace listings found. View on Good Smile Company website.',
-      }
-    } : {}),
+    // Always provide GSC official link as fallback/reference
+    fallback: {
+      type: 'goodsmile',
+      url: `https://www.goodsmile.info/en/product/${gscId}`,
+      message: listings.length === 0
+        ? 'No verified listings found. View on Good Smile Company:'
+        : 'Official product page:',
+    },
   })
 }

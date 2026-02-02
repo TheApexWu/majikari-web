@@ -93,6 +93,8 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
   const [listings, setListings] = useState<Listing[]>([])
   const [loadingListings, setLoadingListings] = useState(false)
   const [listingsError, setListingsError] = useState('')
+  const [fallbackUrl, setFallbackUrl] = useState('')
+  const [fallbackMsg, setFallbackMsg] = useState('')
   const [imgLoaded, setImgLoaded] = useState(false)
 
   const handleFindListings = useCallback(async () => {
@@ -101,7 +103,7 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
       return
     }
     setExpanded(true)
-    if (listings.length > 0) return
+    if (listings.length > 0 || fallbackUrl) return
 
     setLoadingListings(true)
     setListingsError('')
@@ -109,7 +111,11 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
       const res = await fetch(`/api/listings/${product.id}`)
       const data = await res.json()
       setListings(data.listings || [])
-      if (!data.listings?.length) {
+      if (data.fallback) {
+        setFallbackUrl(data.fallback.url)
+        setFallbackMsg(data.fallback.message)
+      }
+      if (!data.listings?.length && !data.fallback) {
         setListingsError('No listings found yet — check back soon')
       }
     } catch {
@@ -117,7 +123,7 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
     } finally {
       setLoadingListings(false)
     }
-  }, [expanded, listings.length, product.id])
+  }, [expanded, listings.length, fallbackUrl, product.id])
 
   const imageUrl = product.images?.[0]
   const catColor = getCategoryColor(product.category)
@@ -159,40 +165,50 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
             <span className="card-price">{formatPrice(product.price)}</span>
             {msrpUsd && <span className="card-price-usd">{msrpUsd}</span>}
           </div>
-          {product.listing_count > 0 ? (
-            <button
-              className={`card-listings-btn ${expanded ? 'active' : ''}`}
-              onClick={handleFindListings}
-            >
-              {loadingListings ? (
-                <span className="btn-loading">
-                  <span className="btn-spinner" />
-                  Searching…
-                </span>
-              ) : expanded ? (
-                '▾ Hide'
-              ) : (
-                `🛒 ${product.listing_count} listing${product.listing_count !== 1 ? 's' : ''}`
-              )}
-            </button>
-          ) : (
-            <span className="card-no-listings">Catalog only</span>
-          )}
+          <button
+            className={`card-listings-btn ${expanded ? 'active' : ''}`}
+            onClick={handleFindListings}
+          >
+            {loadingListings ? (
+              <span className="btn-loading">
+                <span className="btn-spinner" />
+                Searching…
+              </span>
+            ) : expanded ? (
+              '▾ Hide'
+            ) : (
+              '🔍 View Details'
+            )}
+          </button>
         </div>
 
-        {product.listing_count > 0 && (
-          <div className={`card-listings ${expanded ? 'open' : ''}`}>
-            {listingsError && (
-              <div className="listings-empty">{listingsError}</div>
-            )}
-            {listings.map((l, i) => (
-              <ListingRow key={l.listing_id} listing={l} index={i} />
-            ))}
-            {listings.length > 0 && (
-              <div className="listings-tip">Prices from Mercari JP · Proxy fees not included</div>
-            )}
-          </div>
-        )}
+        <div className={`card-listings ${expanded ? 'open' : ''}`}>
+          {listingsError && !fallbackUrl && (
+            <div className="listings-empty">{listingsError}</div>
+          )}
+          {listings.map((l, i) => (
+            <ListingRow key={l.listing_id} listing={l} index={i} />
+          ))}
+          {listings.length > 0 && (
+            <div className="listings-tip">Prices from Mercari JP · Proxy fees not included</div>
+          )}
+          {fallbackUrl && (
+            <a
+              href={fallbackUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="listing-row gsc-fallback"
+            >
+              <div className="listing-top-row">
+                <div className="listing-name">{fallbackMsg}</div>
+              </div>
+              <div className="listing-meta">
+                <span className="listing-source">Good Smile Company</span>
+                <span className="listing-arrow">→</span>
+              </div>
+            </a>
+          )}
+        </div>
       </div>
     </div>
   )
