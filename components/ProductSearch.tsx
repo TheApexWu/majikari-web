@@ -1,9 +1,17 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
+
+const FRANCHISE_HINTS = [
+  'Hatsune Miku', 'Fate/Grand Order', 'Demon Slayer', 'Re:ZERO',
+  'My Hero Academia', 'hololive', 'Attack on Titan', 'Jujutsu Kaisen',
+  'Evangelion', 'Chainsaw Man', 'Touken Ranbu', 'Spy x Family',
+  'One Piece', 'Genshin Impact', 'Bocchi the Rock!', 'Frieren',
+  'Kantai Collection', 'No Game No Life', 'Konosuba', 'Tokyo Revengers',
+  'Love Live!', 'Haikyu!!', 'Harry Potter', 'To Love-Ru',
+]
 
 interface Product {
   id: string
@@ -32,6 +40,15 @@ export default function ProductSearch() {
   const [results, setResults] = useState<SearchResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery)
+  const [hintIndex, setHintIndex] = useState(() => Math.floor(Math.random() * FRANCHISE_HINTS.length))
+
+  // Rotate placeholder hint every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHintIndex(i => (i + 1) % FRANCHISE_HINTS.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Sync query with URL params
   useEffect(() => {
@@ -89,7 +106,7 @@ export default function ProductSearch() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name... 名前で検索 (e.g., Miku, ねんどろいど)"
+          placeholder={`Try "${FRANCHISE_HINTS[hintIndex]}"...`}
           className="w-full px-6 py-4 text-lg bg-gray-800 border-2 border-gray-700 rounded-xl focus:border-cyan-500 focus:outline-none transition-colors placeholder-gray-500"
         />
         {loading && (

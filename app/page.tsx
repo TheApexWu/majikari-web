@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useCallback, FormEvent, useRef } from 'react'
 
+const FRANCHISE_HINTS = [
+  'Hatsune Miku', 'Fate/Grand Order', 'Demon Slayer', 'Re:ZERO',
+  'My Hero Academia', 'hololive', 'Attack on Titan', 'Jujutsu Kaisen',
+  'Evangelion', 'Chainsaw Man', 'Touken Ranbu', 'Spy x Family',
+  'One Piece', 'Genshin Impact', 'Bocchi the Rock!', 'Frieren',
+  'Kantai Collection', 'No Game No Life', 'Konosuba', 'Tokyo Revengers',
+  'Love Live!', 'Haikyu!!', 'Harry Potter', 'To Love-Ru',
+]
+
 interface Product {
   id: string
   source_id: number
@@ -254,6 +263,7 @@ function WaitlistForm() {
 }
 
 export default function Home() {
+  const [hintIndex, setHintIndex] = useState(() => Math.floor(Math.random() * FRANCHISE_HINTS.length))
   const [searchQuery, setSearchQuery] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState('')
   const [products, setProducts] = useState<Product[]>([])
@@ -266,6 +276,13 @@ export default function Home() {
   const [animKey, setAnimKey] = useState(0)
   const resultsRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHintIndex(i => (i + 1) % FRANCHISE_HINTS.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
 
   const doSearch = useCallback(async (query: string, showAll = false) => {
     if (!query.trim()) return
@@ -364,7 +381,7 @@ export default function Home() {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Try: Blue Archive, ねんどろいど, chainsaw man, marisa fumo..."
+            placeholder={`Try "${FRANCHISE_HINTS[hintIndex]}"...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -375,14 +392,14 @@ export default function Home() {
 
         {!hasSearched && (
           <div className="stats-bar">
-            <span className="stat-chip"><strong>5,033</strong> listings tracked</span>
+            <span className="stat-chip"><strong>10,960</strong> listings tracked</span>
             <span className="stat-chip"><strong>7,374</strong> products indexed</span>
             <span className="stat-chip"><strong>6,453</strong> JP names mapped</span>
           </div>
         )}
 
         <div className="stats-bar" style={{ marginTop: '0.5rem' }}>
-          {['Blue Archive', 'Miku', 'Chainsaw Man', 'Fate', 'ねんどろいど', 'Touhou'].map((pill) => (
+          {['Miku', 'Chainsaw Man', 'Fate', 'ねんどろいど', 'Frieren', 'hololive'].map((pill) => (
             <button
               key={pill}
               onClick={() => handlePillClick(pill)}
