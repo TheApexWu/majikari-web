@@ -138,6 +138,7 @@ function ProductCard({ product }: { product: Product }) {
   const [listings, setListings] = useState<Listing[]>([])
   const [showListings, setShowListings] = useState(false)
   const [loadingListings, setLoadingListings] = useState(false)
+  const [noListings, setNoListings] = useState(false)
   
   const imageUrl = product.images?.[0] || null
   
@@ -150,8 +151,13 @@ function ProductCard({ product }: { product: Product }) {
     try {
       const res = await fetch(`/api/listings/${product.id}`)
       const data = await res.json()
-      setListings(data.listings || [])
-      setShowListings(true)
+      const fetched = data.listings || []
+      setListings(fetched)
+      if (fetched.length === 0) {
+        setNoListings(true)
+      } else {
+        setShowListings(true)
+      }
     } catch (err) {
       console.error('Failed to fetch listings:', err)
     } finally {
@@ -224,23 +230,29 @@ function ProductCard({ product }: { product: Product }) {
           )}
         </div>
         
-        {/* Buy Button */}
-        <button
-          onClick={fetchListings}
-          disabled={loadingListings}
-          className="w-full mt-3 py-2 px-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-sm font-semibold transition-all disabled:opacity-50"
-        >
-          {loadingListings ? (
-            <span className="flex items-center justify-center gap-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Loading...
-            </span>
-          ) : showListings ? (
-            'Hide Listings'
-          ) : (
-            '🛒 Find Best Price'
-          )}
-        </button>
+        {/* Buy Button — only show if we haven't already confirmed no listings */}
+        {noListings ? (
+          <p className="w-full mt-3 py-2 px-3 text-center text-xs text-zinc-500">
+            No listings available
+          </p>
+        ) : (
+          <button
+            onClick={fetchListings}
+            disabled={loadingListings}
+            className="w-full mt-3 py-2 px-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-sm font-semibold transition-all disabled:opacity-50"
+          >
+            {loadingListings ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Loading...
+              </span>
+            ) : showListings ? (
+              'Hide Listings'
+            ) : (
+              '🛒 Find Best Price'
+            )}
+          </button>
+        )}
         
         {/* Listings */}
         {showListings && listings.length > 0 && (
@@ -272,12 +284,6 @@ function ProductCard({ product }: { product: Product }) {
               </p>
             )}
           </div>
-        )}
-        
-        {showListings && listings.length === 0 && (
-          <p className="mt-3 text-xs text-gray-500 text-center">
-            No listings found yet
-          </p>
         )}
       </div>
     </div>
