@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
+import { fetchMercariItem, formatLiveResult } from '@/lib/mercari'
 
 interface RawItem {
   id: string
@@ -201,14 +202,31 @@ export async function GET(request: NextRequest) {
   // Check if it's a Mercari URL/ID
   const mercariId = extractMercariId(q)
   if (mercariId) {
+    // First: check our local database (42K items, instant)
     const exact = items.find(i => i.id === mercariId)
     if (exact) {
       return NextResponse.json({ results: [formatResult(exact)] })
     }
-    // ID not in our database
+
+    // Not in DB — try live fetch from Mercari (on-demand scrape)
+    try {
+      const liveItem = await fetchMercariItem(mercariId)
+      if (liveItem) {
+        return NextResponse.json({
+          results: [formatLiveResult(liveItem)],
+          source: 'live',
+          note: 'This listing was fetched live from Mercari. Cost estimates are calculated on the fly.',
+        })
+      }
+    } catch (err) {
+      // Live fetch failed — fall through to "not found"
+      console.error('Live fetch failed:', err)
+    }
+
+    // Neither in DB nor fetchable
     return NextResponse.json({
       results: [],
-      note: 'This listing is not in our database yet. Try searching by product name.',
+      note: 'Could not find this listing. It may have been sold or removed.',
     })
   }
 
