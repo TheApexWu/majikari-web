@@ -17,6 +17,9 @@ import ItemGrid from '@/components/ItemGrid'
 import { Item } from '@/lib/items'
 import Link from 'next/link'
 
+// Force dynamic rendering — 42K items is too large for static prerender
+export const dynamic = 'force-dynamic'
+
 /**
  * CONCEPT: Server-side Data Fetching
  * ──────────────────────────────────
