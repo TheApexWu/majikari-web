@@ -74,9 +74,9 @@ export default function Home() {
         </div>
 
         <div className="stats-bar">
-          <span className="stat-chip"><strong>16,302</strong> listings tracked</span>
+          <span className="stat-chip"><strong>5,033</strong> listings tracked</span>
           <span className="stat-chip"><strong>7,374</strong> products indexed</span>
-          <span className="stat-chip">Updated <strong>2h ago</strong></span>
+          <span className="stat-chip"><strong>6,453</strong> JP names mapped</span>
         </div>
       </div>
 

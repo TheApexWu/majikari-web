@@ -1,7 +1,7 @@
 /**
  * Products Search Page
  * 
- * The core demo: Search 1800+ Good Smile products by EN or JP name.
+ * The core demo: Search 7,300+ Good Smile products by EN or JP name.
  * Shows the technical moat - bilingual product matching.
  */
 
@@ -57,7 +57,7 @@ export default function ProductsPage() {
               </span>
             </h1>
             <p className="text-xl text-gray-400 mb-6">
-              Search <span className="text-cyan-400 font-semibold">1,800+</span> figures from Good Smile Company.
+              Search <span className="text-cyan-400 font-semibold">7,300+</span> figures from Good Smile Company.
               <br />
               <span className="text-gray-500">Search in English or Japanese — we match both.</span>
             </p>
