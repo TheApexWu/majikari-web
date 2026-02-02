@@ -32,18 +32,14 @@ async function getItems(): Promise<Item[]> {
   /**
    * CONCEPT: Data Loading Strategy
    * ──────────────────────────────
-   * Option 1: Import JSON directly (bundled at build time)
-   * Option 2: Fetch from API route (runtime)
-   * Option 3: Read from filesystem (server only)
-   * 
-   * We use Option 1 for MVP — simplest, works with static export.
-   * The JSON gets bundled into the server code.
-   * 
-   * Trade-off: Large JSON = larger bundle. OK for 1,500 items (~1MB).
-   * For 100K+ items, you'd want a database.
+   * Read from public/data at runtime to avoid bundling 80MB+ JSON
+   * into the serverless function.
    */
-  const items = (await import('@/data/items.json')).default
-  return items as Item[]
+  const { promises: fs } = await import('fs')
+  const path = await import('path')
+  const filePath = path.join(process.cwd(), 'public', 'data', 'items.json')
+  const raw = await fs.readFile(filePath, 'utf-8')
+  return JSON.parse(raw) as Item[]
 }
 
 /**

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { promises as fs } from 'fs'
+import path from 'path'
 
 interface RawItem {
   id: string
@@ -8,6 +10,7 @@ interface RawItem {
   price_usd: number
   image_url: string | null
   category_source: string
+  keyword?: string
   franchise: string
   franchise_jp?: string
   condition: string | null
@@ -36,7 +39,10 @@ let itemsCache: RawItem[] | null = null
 
 async function getItems(): Promise<RawItem[]> {
   if (itemsCache) return itemsCache
-  itemsCache = (await import('@/data/items.json')).default as RawItem[]
+  // Read from public directory at runtime (avoids bundling 80MB into serverless function)
+  const filePath = path.join(process.cwd(), 'public', 'data', 'items.json')
+  const raw = await fs.readFile(filePath, 'utf-8')
+  itemsCache = JSON.parse(raw) as RawItem[]
   return itemsCache
 }
 
