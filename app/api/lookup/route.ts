@@ -51,32 +51,101 @@ function extractMercariId(input: string): string | null {
   return null
 }
 
+// ── Product-type detection for search ranking ──
+// Maps search keywords to their JP/EN variants for matching in listing names
+const PRODUCT_TYPE_KEYWORDS: Record<string, string[]> = {
+  'nendoroid':     ['ねんどろいど', 'nendoroid', 'ネンドロイド'],
+  'figma':         ['figma', 'フィグマ'],
+  'pop up parade': ['pop up parade', 'ポップアップパレード'],
+  'scale':         ['スケール', '1/7', '1/8', '1/4', '1/6', 'scale'],
+  'figure':        ['フィギュア', 'figure', 'fig'],
+  'prize':         ['プライズ', '一番くじ', 'ichiban kuji'],
+}
+
+// Keywords indicating non-figure merch (penalize when user wants figures)
+const MERCH_KEYWORDS = [
+  'アクリルスタンド', 'アクスタ', 'アクリルキーホルダー', 'アクキー',
+  'キーホルダー', 'ストラップ', '缶バッジ', 'ピンバッジ',
+  'tシャツ', 'パーカー', 'タオル', 'ブランケット',
+  'ぬいぐるみ', 'マスコット', 'クッション',
+  'ポスター', 'タペストリー', 'クリアファイル',
+  'カード', 'ブロマイド', 'ステッカー', 'シール',
+  'マグカップ', 'コースター', 'ラバーストラップ', 'ラバスト',
+]
+
+function detectQueryProductType(query: string): string | null {
+  const q = query.toLowerCase()
+  for (const [type, variants] of Object.entries(PRODUCT_TYPE_KEYWORDS)) {
+    for (const v of variants) {
+      if (q.includes(v.toLowerCase())) return type
+    }
+  }
+  return null
+}
+
+function itemMatchesProductType(name: string, type: string): boolean {
+  const nameLower = name.toLowerCase()
+  const variants = PRODUCT_TYPE_KEYWORDS[type]
+  if (!variants) return false
+  return variants.some(v => nameLower.includes(v.toLowerCase()))
+}
+
+function itemIsMerch(name: string): boolean {
+  const nameLower = name.toLowerCase()
+  return MERCH_KEYWORDS.some(kw => nameLower.includes(kw.toLowerCase()))
+}
+
 function searchItems(items: RawItem[], query: string, limit: number = 20): RawItem[] {
   const q = query.toLowerCase()
   const words = q.split(/\s+/).filter(Boolean)
+  const queryType = detectQueryProductType(q)
+
+  // Strip product-type words from query for pure content matching
+  // e.g. "chainsaw man nendoroid" → content words = ["chainsaw", "man"]
+  const typeWords = new Set<string>()
+  if (queryType) {
+    const variants = PRODUCT_TYPE_KEYWORDS[queryType] || []
+    for (const v of variants) typeWords.add(v.toLowerCase())
+    // Also add the english type name itself
+    typeWords.add(queryType)
+  }
+  const contentWords = words.filter(w => !typeWords.has(w))
 
   const scored = items
     .map(item => {
       let relevance = 0
       const name = item.name.toLowerCase()
+      const keyword = ((item as any).keyword || '').toLowerCase()
       const franchise = (item.franchise || '').toLowerCase()
       const franchiseJp = (item.franchise_jp || '').toLowerCase()
-      const category = (item.category_source || '').toLowerCase()
 
-      // Full query match
+      // Full query match in name
       if (name.includes(q)) relevance += 10
       if (franchise.includes(q)) relevance += 8
       if (franchiseJp.includes(q)) relevance += 8
 
-      // Word-level
-      for (const w of words) {
+      // Word-level matching (content words — franchise/character)
+      for (const w of contentWords.length > 0 ? contentWords : words) {
         if (name.includes(w)) relevance += 3
         if (franchise.includes(w)) relevance += 2
         if (franchiseJp.includes(w)) relevance += 2
-        if (category.includes(w)) relevance += 1
+        if (keyword.includes(w)) relevance += 1
       }
 
-      // Quality score boosts high-value items to the top
+      // ── Product-type boosting ──
+      // If user searched for a specific product type, HEAVILY boost matches
+      if (queryType) {
+        if (itemMatchesProductType(item.name, queryType)) {
+          relevance += 15  // massive boost for correct product type
+        } else if (itemIsMerch(item.name)) {
+          relevance -= 8  // heavy penalty for merch when searching for figures
+        } else {
+          // No type signal either way — slight penalty vs typed matches
+          relevance -= 2
+        }
+      }
+
+      // Quality score tiebreaker
       const quality = (item as any).quality_score ?? 50
       const finalScore = relevance * 100 + quality
 
