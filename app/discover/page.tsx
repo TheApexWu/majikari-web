@@ -1,56 +1,13 @@
-/**
- * Discovery Page
- * 
- * CONCEPT: Next.js App Router Pages
- * ─────────────────────────────────
- * In the App Router, every folder inside `app/` can have a `page.tsx`.
- * The folder path becomes the URL path:
- * 
- * app/discover/page.tsx → yoursite.com/discover
- * 
- * This file is a Server Component by default.
- * It can fetch data, access environment variables, etc.
- */
-
 import { Suspense } from 'react'
 import ItemGrid from '@/components/ItemGrid'
 import { Item } from '@/lib/items'
 import Link from 'next/link'
 
-// Force dynamic rendering — 42K items is too large for static prerender
-export const dynamic = 'force-dynamic'
-
-/**
- * CONCEPT: Server-side Data Fetching
- * ──────────────────────────────────
- * In Server Components, we can fetch data directly.
- * This runs on the server, not in the browser.
- * 
- * Benefits:
- * - Faster initial load (data arrives with HTML)
- * - Better SEO (search engines see the content)
- * - Smaller JavaScript bundle (fetch code stays on server)
- */
 async function getItems(): Promise<Item[]> {
-  /**
-   * CONCEPT: Data Loading Strategy
-   * ──────────────────────────────
-   * Read from public/data at runtime to avoid bundling 80MB+ JSON
-   * into the serverless function.
-   */
-  const { promises: fs } = await import('fs')
-  const path = await import('path')
-  const filePath = path.join(process.cwd(), 'public', 'data', 'items.json')
-  const raw = await fs.readFile(filePath, 'utf-8')
-  return JSON.parse(raw) as Item[]
+  const items = (await import('@/data/items.json')).default
+  return items as Item[]
 }
 
-/**
- * CONCEPT: Loading States with Suspense
- * ─────────────────────────────────────
- * Suspense lets you show a fallback while content loads.
- * This is built into React 18+.
- */
 function LoadingGrid() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -67,24 +24,14 @@ function LoadingGrid() {
   )
 }
 
-/**
- * CONCEPT: Metadata Export
- * ────────────────────────
- * Next.js uses this export to set the page's <title> and meta tags.
- * Good for SEO.
- */
 export const metadata = {
   title: 'Discover | Majikari',
   description: 'Browse Japanese collectibles from Mercari Japan. Figures, cards, plush, and more.',
 }
 
-/**
- * Main Page Component
- */
 export default async function DiscoverPage() {
-  // Fetch items on the server
   const items = await getItems()
-  
+
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Header */}
@@ -103,7 +50,7 @@ export default async function DiscoverPage() {
           </nav>
         </div>
       </header>
-      
+
       {/* Hero */}
       <section className="border-b border-gray-800 bg-gradient-to-r from-gray-900 to-gray-800">
         <div className="max-w-7xl mx-auto px-4 py-8">
@@ -111,20 +58,20 @@ export default async function DiscoverPage() {
             Discover Japanese Collectibles
           </h1>
           <p className="text-gray-400 max-w-2xl">
-            Browse {items.length.toLocaleString()} items from Mercari Japan. 
+            Browse {items.length.toLocaleString()} items from Mercari Japan.
             Filter by category, price, or search for something specific.
             Save items to your wishlist to track them.
           </p>
         </div>
       </section>
-      
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
         <Suspense fallback={<LoadingGrid />}>
           <ItemGrid items={items} />
         </Suspense>
       </main>
-      
+
       {/* Footer */}
       <footer className="border-t border-gray-800 py-8 mt-12">
         <div className="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
