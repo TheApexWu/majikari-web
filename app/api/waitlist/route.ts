@@ -1,20 +1,14 @@
 /**
- * Waitlist API
+ * Waitlist API — Persistent via Upstash Redis
  *
  * POST /api/waitlist — Add email to waitlist
- * GET  /api/waitlist — Get count
+ * GET  /api/waitlist — Get count + optionally list all (?secret=ADMIN_SECRET)
  *
- * Uses Vercel KV (Redis) for persistence. Falls back to in-memory
- * if KV isn't configured (dev mode).
- *
- * Set WAITLIST_KV_REST_API_URL and WAITLIST_KV_REST_API_TOKEN in Vercel env
- * OR use the simpler approach: store in a Vercel Blob / external DB.
- *
- * For MVP: We use a simple JSON file in the repo as seed + runtime append
- * via Vercel's Edge Config or just accept that signups go to logs.
- *
- * ACTUALLY for launch speed: POST writes to Vercel Function logs (retrievable)
- * AND sends a notification. Simple, reliable, zero infrastructure.
+ * Env vars needed in Vercel:
+ *   UPSTASH_REDIS_REST_URL
+ *   UPSTASH_REDIS_REST_TOKEN
+ *   WAITLIST_ADMIN_SECRET (optional, for retrieving emails)
+ *   WAITLIST_WEBHOOK_URL (optional, for notifications)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -25,37 +19,67 @@ const emailSchema = z.object({
   source: z.string().optional().default('landing'),
 })
 
-// In-memory store (persists per cold-start, fine for MVP traffic)
-// Each serverless instance gets its own, but we log everything
+// ── Upstash Redis REST helpers ──
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN
+
+async function redis(command: string[]) {
+  if (!REDIS_URL || !REDIS_TOKEN) return null
+  const res = await fetch(`${REDIS_URL}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${REDIS_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(command),
+  })
+  return res.json()
+}
+
+// Fallback in-memory store for local dev
 const memoryStore: Array<{ email: string; source: string; createdAt: string }> = []
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { email, source } = emailSchema.parse(body)
+    const entry = { email, source, createdAt: new Date().toISOString() }
 
-    // Dedupe within this instance
-    if (memoryStore.some(e => e.email === email)) {
-      return NextResponse.json({
-        success: true,
-        message: "You're already on the list!",
-      })
+    if (REDIS_URL && REDIS_TOKEN) {
+      // Check if already exists
+      const exists = await redis(['SISMEMBER', 'waitlist:emails', email])
+      if (exists?.result === 1) {
+        return NextResponse.json({
+          success: true,
+          message: "You're already on the list!",
+        })
+      }
+
+      // Add to set (for dedupe) and list (for ordered retrieval)
+      await redis(['SADD', 'waitlist:emails', email])
+      await redis(['RPUSH', 'waitlist:entries', JSON.stringify(entry)])
+    } else {
+      // Local dev fallback
+      if (memoryStore.some(e => e.email === email)) {
+        return NextResponse.json({
+          success: true,
+          message: "You're already on the list!",
+        })
+      }
+      memoryStore.push(entry)
     }
 
-    const entry = { email, source, createdAt: new Date().toISOString() }
-    memoryStore.push(entry)
-
-    // Log to Vercel Function Logs (always retrievable via `vercel logs`)
+    // Always log (backup)
     console.log(`[WAITLIST_SIGNUP] ${JSON.stringify(entry)}`)
 
-    // If a webhook URL is configured, fire and forget
+    // Webhook notification (fire and forget)
     const webhookUrl = process.env.WAITLIST_WEBHOOK_URL
     if (webhookUrl) {
       fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: `🎯 New Majikari signup: ${email} (${source})` }),
-      }).catch(() => {}) // fire and forget
+      }).catch(() => {})
     }
 
     return NextResponse.json({
@@ -77,7 +101,29 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
-  // Return in-memory count (instance-local, but honest)
+export async function GET(request: NextRequest) {
+  const secret = request.nextUrl.searchParams.get('secret')
+  const adminSecret = process.env.WAITLIST_ADMIN_SECRET
+
+  if (REDIS_URL && REDIS_TOKEN) {
+    const countRes = await redis(['SCARD', 'waitlist:emails'])
+    const count = countRes?.result || 0
+
+    // If admin secret matches, return all entries
+    if (adminSecret && secret === adminSecret) {
+      const entriesRes = await redis(['LRANGE', 'waitlist:entries', '0', '-1'])
+      const entries = (entriesRes?.result || []).map((e: string) => {
+        try { return JSON.parse(e) } catch { return e }
+      })
+      return NextResponse.json({ count, entries })
+    }
+
+    return NextResponse.json({ count })
+  }
+
+  // Local dev fallback
+  if (adminSecret && secret === adminSecret) {
+    return NextResponse.json({ count: memoryStore.length, entries: memoryStore })
+  }
   return NextResponse.json({ count: memoryStore.length })
 }
