@@ -25,25 +25,29 @@ export function addToWishlist(itemId: string): WishlistItem[] {
   if (typeof window === 'undefined') return []
   const wishlist = getWishlist()
   if (wishlist.some(item => item.id === itemId)) return wishlist
-  const updated = [...wishlist, { id: itemId, addedAt: new Date().toISOString() }]
-  localStorage.setItem(WISHLIST_KEY, JSON.stringify(updated))
-  return updated
+  const newWishlist: WishlistItem[] = [
+    ...wishlist,
+    { id: itemId, addedAt: new Date().toISOString() }
+  ]
+  localStorage.setItem(WISHLIST_KEY, JSON.stringify(newWishlist))
+  return newWishlist
 }
 
 export function removeFromWishlist(itemId: string): WishlistItem[] {
   if (typeof window === 'undefined') return []
-  const updated = getWishlist().filter(item => item.id !== itemId)
-  localStorage.setItem(WISHLIST_KEY, JSON.stringify(updated))
-  return updated
+  const newWishlist = getWishlist().filter(item => item.id !== itemId)
+  localStorage.setItem(WISHLIST_KEY, JSON.stringify(newWishlist))
+  return newWishlist
 }
 
 export function toggleWishlist(itemId: string): boolean {
   if (isInWishlist(itemId)) {
     removeFromWishlist(itemId)
     return false
+  } else {
+    addToWishlist(itemId)
+    return true
   }
-  addToWishlist(itemId)
-  return true
 }
 
 export function clearWishlist(): void {
