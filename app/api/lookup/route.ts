@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { fetchMercariItem, formatLiveResult, calculateProxyCosts } from '@/lib/mercari'
+import { expandQuery, normalizeQuery } from '@/lib/search'
 
 // Slim search index: compact keys to save memory
 interface SearchItem {
@@ -83,9 +84,19 @@ function itemIsMerch(name: string): boolean {
 }
 
 function searchItems(items: SearchItem[], query: string, limit: number = 20): SearchItem[] {
-  const q = query.toLowerCase()
+  const q = normalizeQuery(query)
   const words = q.split(/\s+/).filter(Boolean)
   const queryType = detectQueryProductType(q)
+
+  // Expand query with franchise aliases
+  const expandedQueries = expandQuery(q)
+  const expandedWordsSet = new Set<string>()
+  for (const eq of expandedQueries) {
+    for (const w of eq.toLowerCase().split(/\s+/)) {
+      expandedWordsSet.add(w)
+    }
+  }
+  const expandedWords = Array.from(expandedWordsSet)
 
   const typeWords = new Set<string>()
   if (queryType) {
@@ -103,15 +114,35 @@ function searchItems(items: SearchItem[], query: string, limit: number = 20): Se
       const franchise = (item.f || '').toLowerCase()
       const franchiseJp = (item.fj || '').toLowerCase()
 
+      // Check original query
       if (name.includes(q)) relevance += 10
       if (franchise.includes(q)) relevance += 8
       if (franchiseJp.includes(q)) relevance += 8
 
+      // Check expanded queries (aliases)
+      for (const eq of expandedQueries) {
+        const eql = eq.toLowerCase()
+        if (eql === q) continue // skip original, already checked
+        if (name.includes(eql)) relevance += 9
+        if (keyword.includes(eql)) relevance += 7
+        if (franchise.includes(eql)) relevance += 7
+        if (franchiseJp.includes(eql)) relevance += 7
+      }
+
+      // Word-level matching with expanded vocabulary
       for (const w of contentWords.length > 0 ? contentWords : words) {
         if (name.includes(w)) relevance += 3
         if (franchise.includes(w)) relevance += 2
         if (franchiseJp.includes(w)) relevance += 2
         if (keyword.includes(w)) relevance += 1
+      }
+
+      // Also check expanded alias words
+      for (const w of expandedWords) {
+        if (w.length < 2) continue  // skip tiny words
+        if (words.includes(w)) continue  // skip already-checked original words
+        if (name.includes(w)) relevance += 2
+        if (keyword.includes(w)) relevance += 2
       }
 
       if (queryType) {

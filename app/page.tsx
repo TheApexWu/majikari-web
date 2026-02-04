@@ -290,6 +290,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [animKey, setAnimKey] = useState(0)
+  const [listingFallbacks, setListingFallbacks] = useState<any[]>([])
+  const [expandedTo, setExpandedTo] = useState<string[] | null>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -305,6 +307,8 @@ export default function Home() {
     setLoading(true)
     setHasSearched(true)
     setSubmittedQuery(query.trim())
+    setListingFallbacks([])
+    setExpandedTo(null)
     try {
       const availParam = showAll ? 'false' : 'true'
       const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}&limit=50&available=${availParam}`)
@@ -313,7 +317,20 @@ export default function Home() {
       setTotalCount(data.count || 0)
       setTotalMatching(data.totalMatching || 0)
       setTotalWithListings(data.totalWithListings || 0)
+      if (data.expandedTo) setExpandedTo(data.expandedTo)
       setAnimKey((k) => k + 1)
+
+      // If no products found, fallback to listing search
+      if ((data.products || []).length === 0) {
+        try {
+          const listRes = await fetch(`/api/lookup?q=${encodeURIComponent(query.trim())}`)
+          const listData = await listRes.json()
+          if (listData.results?.length > 0) {
+            setListingFallbacks(listData.results)
+          }
+        } catch { /* listing fallback is best-effort */ }
+      }
+
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 150)
@@ -470,9 +487,38 @@ export default function Home() {
             </div>
           ) : products.length === 0 ? (
             <div className="results-empty">
-              <div className="empty-kanji">無</div>
-              <p>Nothing found for &ldquo;{submittedQuery}&rdquo;</p>
-              <p className="results-empty-hint">Try English or Japanese — both work here.</p>
+              {listingFallbacks.length > 0 ? (
+                <>
+                  <p style={{ marginBottom: '0.5rem' }}>No cataloged products for &ldquo;{submittedQuery}&rdquo; yet, but we found <strong>{listingFallbacks.length}</strong> marketplace listings:</p>
+                  <div className="results-grid" style={{ marginTop: '1rem' }}>
+                    {listingFallbacks.map((l: any, i: number) => (
+                      <a key={l.id || i} href={l.url} target="_blank" rel="noopener noreferrer" className="result-card listing-fallback-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        {l.image_url && (
+                          <div className="card-image-wrap">
+                            <img src={l.image_url} alt={l.name} loading="lazy" />
+                          </div>
+                        )}
+                        <div className="card-body">
+                          <div className="card-name">{l.name}</div>
+                          <div className="card-price">¥{l.price?.toLocaleString()}</div>
+                          {l.cheapest_proxy && l.cheapest_total_usd && (
+                            <div className="card-proxy" style={{ fontSize: '0.75rem', opacity: 0.7 }}>
+                              Best via {l.cheapest_proxy}: ${l.cheapest_total_usd.toFixed(2)} landed
+                            </div>
+                          )}
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                  <p className="results-empty-hint" style={{ marginTop: '1rem' }}>These are raw Mercari JP listings — not yet matched to our product catalog.</p>
+                </>
+              ) : (
+                <>
+                  <div className="empty-kanji">無</div>
+                  <p>Nothing found for &ldquo;{submittedQuery}&rdquo;</p>
+                  <p className="results-empty-hint">Try English or Japanese — both work here.</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="results-grid">
