@@ -38,6 +38,9 @@ interface Listing {
   source_name: string
 }
 
+// Exchange rate — keep in sync with majikari-scraper/build_web_data.py
+const JPY_USD_RATE = 155
+
 const CATEGORY_COLORS: Record<string, string> = {
   nendoroid: 'var(--cyan)',
   figma: 'var(--lavender)',
@@ -58,7 +61,7 @@ function formatPrice(yen?: number): string {
 }
 
 function ListingRow({ listing, index }: { listing: Listing; index: number }) {
-  const usdEst = listing.price ? `~$${(listing.price * 0.0067).toFixed(0)}` : ''
+  const usdEst = listing.price ? `~$${(listing.price / JPY_USD_RATE).toFixed(0)}` : ''
   const riskClass = listing.risk === 'high' ? 'risk-high' : listing.risk === 'medium' ? 'risk-med' : 'risk-low'
   return (
     <a
@@ -127,7 +130,7 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
 
   const imageUrl = product.images?.[0]
   const catColor = getCategoryColor(product.category)
-  const msrpUsd = product.price ? `~$${(product.price * 0.0067).toFixed(0)}` : null
+  const msrpUsd = product.price ? `~$${(product.price / JPY_USD_RATE).toFixed(0)}` : null
 
   return (
     <div
