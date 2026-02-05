@@ -1,107 +1,15 @@
 /**
- * On-demand Mercari item fetching + proxy cost calculation.
+ * Mercari API Client
  * 
- * When a user pastes a URL not in our DB, we fetch it live from
- * Mercari's web page and calculate proxy costs on the fly.
+ * Handles on-demand item fetching from Mercari JP with DPoP authentication.
+ * Cost calculation delegated to lib/proxy-costs.ts
  */
 
-// ── Proxy service fee structures (ported from build_web_data.py) ──
-
-const JPY_USD_RATE = 155.0
-
-const PROXY_SERVICES: Record<string, {
-  name: string
-  serviceFee: number
-  fxMarkup: number
-  paymentFee: number
-}> = {
-  buyee:      { name: 'Buyee',      serviceFee: 500, fxMarkup: 0.035, paymentFee: 0.03  },
-  zenmarket:  { name: 'ZenMarket',  serviceFee: 300, fxMarkup: 0.03,  paymentFee: 0.035 },
-  fromjapan:  { name: 'FromJapan',  serviceFee: 200, fxMarkup: 0.08,  paymentFee: 0.0   },
-  neokyo:     { name: 'Neokyo',     serviceFee: 350, fxMarkup: 0.0,   paymentFee: 0.029 },
-}
-
-// EMS shipping by weight tier (JPY)
-const EMS_SHIPPING: [number, number][] = [
-  [0.5, 2000], [1.0, 2900], [1.5, 3700], [2.0, 4500], [3.0, 5900], [5.0, 8700],
-]
-
-const DOMESTIC_SHIPPING = 700
-
-function estimateShipping(weightKg: number): number {
-  for (const [tierKg, cost] of EMS_SHIPPING) {
-    if (weightKg <= tierKg) return cost
-  }
-  return 10500
-}
-
-export function calculateProxyCosts(priceJpy: number, weightKg: number = 0.8) {
-  const shipping = estimateShipping(weightKg)
-  const breakdown: Record<string, {
-    proxy: string
-    item_jpy: number
-    fees_jpy: number
-    shipping_jpy: number
-    duty_jpy: number
-    total_jpy: number
-    total_usd: number
-  }> = {}
-
-  let cheapestProxy = ''
-  let cheapestTotal = Infinity
-  let mostExpensiveProxy = ''
-  let mostExpensiveTotal = 0
-
-  for (const [key, proxy] of Object.entries(PROXY_SERVICES)) {
-    const subtotal = priceJpy + DOMESTIC_SHIPPING
-    const service = proxy.serviceFee
-    const fx = Math.round(subtotal * proxy.fxMarkup)
-    const payment = Math.round(subtotal * proxy.paymentFee)
-    let totalJpy = subtotal + service + fx + payment + shipping
-
-    // US customs: $800 de minimis
-    const totalUsdPreDuty = totalJpy / JPY_USD_RATE
-    let duty = 0
-    if (totalUsdPreDuty > 800) {
-      duty = Math.round((totalUsdPreDuty - 800) * 0.045 * JPY_USD_RATE)
-      totalJpy += duty
-    }
-
-    breakdown[key] = {
-      proxy: proxy.name,
-      item_jpy: priceJpy,
-      fees_jpy: service + fx + payment,
-      shipping_jpy: shipping + DOMESTIC_SHIPPING,
-      duty_jpy: duty,
-      total_jpy: totalJpy,
-      total_usd: Math.round(totalJpy / JPY_USD_RATE * 100) / 100,
-    }
-
-    if (totalJpy < cheapestTotal) {
-      cheapestTotal = totalJpy
-      cheapestProxy = proxy.name
-    }
-    if (totalJpy > mostExpensiveTotal) {
-      mostExpensiveTotal = totalJpy
-      mostExpensiveProxy = proxy.name
-    }
-  }
-
-  return {
-    cheapest_proxy: cheapestProxy,
-    cheapest_total_jpy: cheapestTotal,
-    cheapest_total_usd: Math.round(cheapestTotal / JPY_USD_RATE * 100) / 100,
-    most_expensive_proxy: mostExpensiveProxy,
-    most_expensive_total_jpy: mostExpensiveTotal,
-    savings_jpy: mostExpensiveTotal - cheapestTotal,
-    savings_usd: Math.round((mostExpensiveTotal - cheapestTotal) / JPY_USD_RATE * 100) / 100,
-    breakdown,
-  }
-}
-
-// ── Mercari API fetching (DPoP auth) ──
-
 import * as crypto from 'crypto'
+import { JPY_USD_RATE } from './constants'
+import { calculateProxyCosts } from './proxy-costs'
+
+// ── Types ──────────────────────────────────────────────────────
 
 export interface MercariItem {
   id: string
@@ -118,11 +26,11 @@ export interface MercariItem {
   shippingPayer: string | null
 }
 
-// Simple in-memory cache (TTL: 1 hour)
-const cache = new Map<string, { item: MercariItem; ts: number }>()
-const CACHE_TTL_MS = 60 * 60 * 1000
+// ── Cache & Rate Limiting ──────────────────────────────────────
 
-// Rate limit: max 10 live lookups per minute
+const cache = new Map<string, { item: MercariItem; ts: number }>()
+const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
+
 const rateLimitWindow = new Map<string, number[]>()
 const RATE_LIMIT_MAX = 10
 const RATE_LIMIT_WINDOW_MS = 60 * 1000
@@ -138,34 +46,31 @@ function checkRateLimit(): boolean {
   return true
 }
 
-// ── DPoP JWT generation for Mercari API ──
+// ── DPoP JWT Generation ────────────────────────────────────────
+// Mercari requires DPoP (Demonstrating Proof of Possession) tokens
+// for API authentication. We generate ephemeral EC keys per request.
 
 function base64url(buf: Buffer): string {
-  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  return buf.toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
 }
 
 async function generateDPoP(url: string, method: string = 'GET'): Promise<string> {
-  // Generate ephemeral EC P-256 key pair
+  // Ephemeral EC P-256 key pair
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
     namedCurve: 'P-256',
   })
 
-  // Export public key components for JWK
   const pubJwk = publicKey.export({ format: 'jwk' }) as crypto.JsonWebKey
 
-  // Build JWT header
   const header = {
     alg: 'ES256',
-    jwk: {
-      crv: 'P-256',
-      kty: 'EC',
-      x: pubJwk.x,
-      y: pubJwk.y,
-    },
+    jwk: { crv: 'P-256', kty: 'EC', x: pubJwk.x, y: pubJwk.y },
     typ: 'dpop+jwt',
   }
 
-  // Build JWT payload
   const payload = {
     iat: Math.floor(Date.now() / 1000),
     jti: crypto.randomUUID(),
@@ -183,8 +88,7 @@ async function generateDPoP(url: string, method: string = 'GET'): Promise<string
   sign.update(signingInput)
   const derSig = sign.sign(privateKey)
 
-  // Convert DER signature to raw r||s format (64 bytes)
-  // DER: 0x30 len 0x02 rLen r 0x02 sLen s
+  // Convert DER signature to raw r||s (64 bytes)
   let offset = 3
   const rLen = derSig[offset]
   offset += 1
@@ -202,18 +106,19 @@ async function generateDPoP(url: string, method: string = 'GET'): Promise<string
     Buffer.alloc(32 - s.length), s,
   ])
 
-  const sigB64 = base64url(rawSig)
-  return `${headerB64}.${payloadB64}.${sigB64}`
+  return `${headerB64}.${payloadB64}.${base64url(rawSig)}`
 }
 
+// ── API Fetching ───────────────────────────────────────────────
+
 export async function fetchMercariItem(itemId: string): Promise<MercariItem | null> {
-  // Check cache
+  // Check cache first
   const cached = cache.get(itemId)
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
     return cached.item
   }
 
-  // Rate limit
+  // Enforce rate limit
   if (!checkRateLimit()) {
     console.warn('Rate limit exceeded for live Mercari lookups')
     return null
@@ -225,7 +130,7 @@ export async function fetchMercariItem(itemId: string): Promise<MercariItem | nu
 
     const resp = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.3',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'x-platform': 'web',
         'dpop': dpop,
       },
@@ -256,15 +161,15 @@ export async function fetchMercariItem(itemId: string): Promise<MercariItem | nu
       shippingPayer: data.shipping_payer?.name || null,
     }
 
-    // Cache it
     cache.set(itemId, { item, ts: Date.now() })
-
     return item
   } catch (err) {
     console.error(`Failed to fetch Mercari item ${itemId}:`, err)
     return null
   }
 }
+
+// ── Result Formatting ──────────────────────────────────────────
 
 export function formatLiveResult(item: MercariItem) {
   const costs = calculateProxyCosts(item.price)
@@ -274,7 +179,7 @@ export function formatLiveResult(item: MercariItem) {
     id: item.id,
     name: item.name,
     price: item.price,
-    price_usd: Math.round(item.price / JPY_USD_RATE * 100) / 100,
+    price_usd: Math.round((item.price / JPY_USD_RATE) * 100) / 100,
     image_url: item.imageUrl,
     url: `https://jp.mercari.com/item/${item.id}`,
     category: null,
@@ -288,7 +193,7 @@ export function formatLiveResult(item: MercariItem) {
     savings_jpy: costs.savings_jpy,
     savings_usd: costs.savings_usd,
     proxies,
-    _live: true, // flag that this was fetched on-demand
+    _live: true,
     _status: item.status,
   }
 }

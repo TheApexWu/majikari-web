@@ -1,36 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-
-interface ProxyCost {
-  proxy: string
-  item_jpy: number
-  fees_jpy: number
-  shipping_jpy: number
-  duty_jpy: number
-  total_jpy: number
-  total_usd: number
-}
-
-interface LookupResult {
-  id: string
-  name: string
-  price: number
-  price_usd: number
-  image_url: string | null
-  url: string
-  category: string
-  franchise: string
-  condition: string | null
-  trust_risk: string
-  cheapest_proxy: string
-  cheapest_total_usd: number
-  most_expensive_proxy: string
-  most_expensive_total_usd: number
-  savings_jpy: number
-  savings_usd: number
-  proxies: ProxyCost[]
-}
+import type { CostBreakdown, LookupResult } from '@/types'
 
 type SearchState = 'idle' | 'loading' | 'results' | 'no-results' | 'error'
 
@@ -230,7 +201,7 @@ export default function CostLookup() {
                           <div className="flex justify-between text-zinc-500">
                             <span>+ Proxy fees ({item.cheapest_proxy})</span>
                             <span className="font-mono">
-                              {fmt(item.proxies.sort((a: ProxyCost, b: ProxyCost) => a.total_jpy - b.total_jpy)[0]?.fees_jpy ?? 0)}
+                              {fmt(item.proxies.sort((a: CostBreakdown, b: CostBreakdown) => a.total_jpy - b.total_jpy)[0]?.fees_jpy ?? 0)}
                             </span>
                           </div>
                           <div className="flex justify-between text-zinc-500">
