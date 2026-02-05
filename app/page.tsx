@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, FormEvent, useRef } from 'react'
+import { JPY_USD_RATE, CATEGORY_COLORS, STAGGER_DELAY_MS } from '@/lib/constants'
+import type { Product, Listing } from '@/types'
 
 const FRANCHISE_HINTS = [
   'Hatsune Miku', 'Fate/Grand Order', 'Demon Slayer', 'Re:ZERO',
@@ -10,44 +12,6 @@ const FRANCHISE_HINTS = [
   'Kantai Collection', 'No Game No Life', 'Konosuba', 'Tokyo Revengers',
   'Love Live!', 'Haikyu!!', 'Harry Potter', 'To Love-Ru',
 ]
-
-interface Product {
-  id: string
-  source_id: number
-  name: string
-  name_jp?: string
-  series?: string
-  category?: string
-  price?: number
-  release_date?: string
-  images?: string[]
-  listing_count: number
-}
-
-interface Listing {
-  listing_id: string
-  name: string
-  price: number
-  condition: string | null
-  image: string | null
-  url: string
-  score: number
-  match_reason: string
-  risk: 'low' | 'medium' | 'high'
-  risk_flags: string[]
-  source_name: string
-}
-
-// Exchange rate — keep in sync with majikari-scraper/build_web_data.py
-const JPY_USD_RATE = 155
-
-const CATEGORY_COLORS: Record<string, string> = {
-  nendoroid: 'var(--cyan)',
-  figma: 'var(--lavender)',
-  scale: 'var(--accent)',
-  'pop up parade': 'var(--mint)',
-  default: 'var(--accent-soft)',
-}
 
 function getCategoryColor(category?: string): string {
   if (!category) return CATEGORY_COLORS.default
@@ -69,7 +33,7 @@ function ListingRow({ listing, index }: { listing: Listing; index: number }) {
       target="_blank"
       rel="noopener noreferrer"
       className={`listing-row ${riskClass}`}
-      style={{ animationDelay: `${index * 60}ms` }}
+      style={{ animationDelay: `${index * STAGGER_DELAY_MS}ms` }}
     >
       <div className="listing-top-row">
         <div className="listing-name">{listing.name}</div>
@@ -135,7 +99,7 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
   return (
     <div
       className="result-card"
-      style={{ animationDelay: `${index * 50}ms` }}
+      style={{ animationDelay: `${index * STAGGER_DELAY_MS}ms` }}
     >
       <div className="card-image-wrap">
         {imageUrl ? (
